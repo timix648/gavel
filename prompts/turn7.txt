@@ -1,0 +1,13 @@
+Turn 7 - final frontend polish. Quick preset. Frontend only, no contract changes.
+
+1. Lobby: "Loading lots…" stays visible after the lots have loaded. Show it only while
+   the first load is in progress and nothing is on screen yet.
+2. Lobby: lots #0 and #5 show "Lot #0"/"Lot #5" because their lotURI is not JSON. Keep the
+   fallback, but if lotURI is a plain string, show that string as the title.
+3. Add a small "How it works" section on the lobby (3 short lines: bid in USDC, last-10-
+   second bids add 10 seconds, lot and payment swap in one transaction) and a footer link
+   to /proof and to the GitHub repo URL from a constant in src/chain.ts (placeholder).
+4. Make sure every page has a sensible empty state and that /create and /me render
+   without a wallet (prompt to connect instead of blank).
+5. Check all pages at 375 px wide: no horizontal scroll, tap targets at least 44 px.
+Run lint + typecheck and report briefly.

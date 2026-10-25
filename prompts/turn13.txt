@@ -1,0 +1,25 @@
+Turn 13 - two bugs found running the new keeper locally. Quick preset. Keeper,
+relayer and logStore only.
+
+1. The keeper never lists a lot. Its startup rebuild calls eth_getLogs over 100,000
+   blocks; the Arc testnet RPC now answers "requested range too large" (I measured:
+   100k, 50k, 20k fail; 10k and 5k succeed, address-only or with topics). withBackoff
+   treats that as a generic error and retries the SAME range forever, so scanReady never
+   becomes true. Fix: on a range-size error, halve the chunk and continue (down to 1,000),
+   and REMEMBER the size that worked for the rest of the scan. Start at 10,000.
+   The keeper must also never block listing on the rebuild: if the rebuild fails, log it,
+   mark ready with an empty set, and still list new lots.
+2. The keeper's hand-written Listed event is wrong:
+     keeper:   Listed(uint256 indexed lotId, address indexed seller, uint256 reserve, uint256 deadline, string lotURI)
+     contract: Listed(uint256 indexed lotId, address indexed seller, uint256 tokenId, uint256 reserve, uint256 deadline)
+   so its topic0 never matches and it would find no house lots. This is the THIRD bug from
+   hand-copied ABIs (Turn 6: list() argument order; Turn 3c-era event decoding). Remove
+   every hand-written AuctionHouse ABI fragment in keeper/ and relayer/ and import the
+   compiled ABI from contracts/out/AuctionHouse.sol/AuctionHouse.json (as src/abi.ts does).
+3. src/logStore.ts isRangeSizeError does not match "requested range too large"; it only
+   halves because of the loose `eth_getlogs && block` clause, which also matches unrelated
+   errors. Make it explicit: "range too large", "block range", "query returned more than",
+   "response size", "too many blocks". Set LOGS_CHUNK_SIZE to 10_000 and keep the learned
+   working chunk size for the session so later chunks do not re-halve from scratch.
+Run lint + typecheck. Then run the keeper for 2 minutes and paste its log showing the
+rebuild finishing and a lot being listed.

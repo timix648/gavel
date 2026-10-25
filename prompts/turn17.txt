@@ -1,0 +1,31 @@
+Turn 17 - fix the timing of the Why Arc animation. Quick preset, BlockComparison in
+src/pages/Landing.tsx only. The visuals and autoplay are good; the story order is wrong.
+
+I sampled both clocks and captions every 0.5 s. Current behaviour:
+  clock 0:04 -> nothing happens; "A bid is sent" caption appears at 0:01;
+  at 0:00 BOTH outcomes appear at once, "+10 s" fires and the Arc clock shows 0:09,
+  then the Arc clock freezes at 0:05.
+Problems: the bid must be sent at 0:04; the two lanes must resolve at DIFFERENT times
+for different reasons; and the contract does `deadline = block.timestamp + 10`, so an
+accepted late bid puts the clock back to 0:10 (not "+10 on top of 0:00").
+
+Use these keyframes in story seconds (T = original close). Story runs T-20 to T+9,
+compressed to ~10 s, then the 2.5 s hold, then loop.
+- T-20: both clocks 0:20, tiles start (12-s lane: one tile at T-20; Arc: one every 0.5 s).
+- T-10: caption "Ten seconds left."
+- T-4.0: accent bid dot leaves both lanes together. Caption "A bid is sent at 0:04."
+- Arc lane, T-3.5: the next tile arrives, the dot drops into it (turns --good). The
+  contract extends: deadline = T-3.5 + 10 = T+6.5. Clock jumps 0:03 -> 0:10 with the
+  --warn flash and a chip "Back to 0:10". Arc close line slides from T to T+6.5.
+  Arc caption: "Accepted in 0.5 s. Clock back to 0:10."
+- 12-s lane, T-4 to T+4: dot sits beside the lane labelled "pending" (no block yet).
+  At T: clock hits 0:00, close line flashes, caption "Closed. The bid is still waiting
+  for a block." At T+4: the second tile appears to the RIGHT of the close line, the dot
+  drops into it and turns --ink-3 with a strike, caption "Missed. It landed 4 s late."
+- Arc lane keeps counting down after T (0:06, 0:05, ...) so it visibly continues; at
+  T+6.5 it reaches 0:00 and shows "Sold to the late bidder."
+- T+9: hold the final frame 2.5 s (Arc 0:00 "Sold to the late bidder", 12-s "Missed"),
+  then loop. The reduced-motion static render shows this same final frame.
+Lane clocks must always show story-consistent values (never freeze mid-count).
+Lint + typecheck. Then sample both clocks every 0.5 s for one loop yourself and paste
+the samples so I can compare against the keyframes.

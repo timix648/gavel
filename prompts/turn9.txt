@@ -1,0 +1,23 @@
+Turn 9 - restart services and run one end-to-end smoke test on Arc testnet against
+AuctionHouse v5 (0x6280bf11fd8fcdf63a2493fdf893b326fb06478f). Quick preset. Do not change
+any app or contract code unless a step fails because of a bug, and if so tell me exactly
+what you changed.
+
+1. Start the relayer (port 3001) with the RELAYER key (0xca79D9B8… address, NOT the
+   bidder key) and the keeper (port 3002) with the house key. Print each service's
+   address and USDC balance. Confirm GET /stats and GET /health respond.
+2. Use a 5-minute house lot for the test: tell the keeper to list one with duration 300 s
+   now (or list it directly from the house wallet with the keeper's code path), and note
+   its lotId. Leave the keeper running afterwards so it keeps cycling 120 s lots.
+3. On that lot:
+   a. Bidder1 (Circle wallet) bids the reserve with gas.
+   b. A FRESH EOA (generatePrivateKey) is sent 1 USDC by Bidder1, then places a GASLESS
+      bid through the relayer HTTP endpoint with ONE signTypedData. Print tx.from (must be
+      the relayer) and the bidder address.
+   c. Bidder2 (Circle wallet) bids inside the final 10 seconds so Extended fires. Print
+      the old and new deadline.
+   d. After the deadline: settle, then the outbid bidders claim, then the winner (if it is
+      a Circle wallet) calls confirmDelivery.
+4. Print a table of every tx hash with its step, and the final lot state (highestBidder,
+   highestBid, extensions, settled, bond status). Also print relayer /stats.
+Keep both services running at the end and say so.

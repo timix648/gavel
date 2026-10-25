@@ -1,0 +1,30 @@
+Gasless bidding currently makes the bidder sign TWICE (USDC ReceiveWithAuthorization +
+our BidAuthorization). Reduce it to ONE signature with the same security. Balanced preset.
+
+Design: bind the lot inside the EIP-3009 nonce itself.
+- New signature: bidWithAuthorization(uint256 lotId, uint256 amount, uint256 validAfter,
+  uint256 validBefore, bytes32 salt, uint8 v, bytes32 r, bytes32 s). Read `from` by
+  recovering nothing ourselves - instead take `address from` as a parameter too.
+- The contract computes nonce = keccak256(abi.encode(address(this), block.chainid, lotId,
+  amount, salt)) and calls USDC.receiveWithAuthorization(from, address(this), amount,
+  validAfter, validBefore, nonce, v, r, s).
+- Because USDC verifies the signature over that exact nonce, a relayer cannot change
+  lotId, amount, chain or contract without invalidating it, and receiveWithAuthorization
+  (msg.sender must equal `to`) stops it being replayed as a plain transfer. USDC's own
+  used-nonce tracking prevents replay.
+- Delete the BidAuthorization struct, its typehash, the ECDSA recovery and our domain
+  separator code - no longer needed.
+- Frontend: the user signs ONE ReceiveWithAuthorization typed-data message whose nonce is
+  computed client-side with the same formula (random salt). Relayer API: {lotId, amount,
+  from, validAfter, validBefore, salt, sig}; relayer recomputes the nonce and checks it.
+
+Tests: replace the relayed-bid tests so they cover: happy path with one signature; a
+relayer submitting the signature with a different lotId reverts; with a different amount
+reverts; the same signature cannot be used twice; a signature for another contract
+address reverts; expired validBefore reverts; soft close via relayed bid; outbid refund
+goes to the signer; RelayedBid event. Every other test must still pass. Run forge test
+and show the output. Run the balanced review and fix Critical/High.
+
+Redeploy to Arc testnet, update src/chain.ts (address + DEPLOY_BLOCK), restart the
+relayer, and do one live gasless bid end to end with exactly ONE signTypedData call.
+Print the tx hash and confirm the bidder signed once.

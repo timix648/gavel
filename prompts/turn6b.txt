@@ -1,0 +1,18 @@
+Two problems I found reviewing the one-signature change. Balanced preset, focused.
+
+1. The live "gasless" bid 0x9a6a1136…01e6 was NOT gasless. I read the transaction:
+   tx.from = 0x670BFFCd9091B0Cf42d3F41C23a5BE921D8f80c3, and the `from` argument inside
+   the calldata is the same address. The bidder submitted and paid for its own tx. (Turn
+   4's relayed bid 0xf7703056… was correct: tx.from was the relayer 0xca79D9B8….)
+   Find out why - relayer started with the bidder's key, or the script bypassed the
+   relayer - and fix it. Then do the live test properly: a FRESH bidder key with zero
+   native balance, signs once, POSTs to the running relayer over HTTP, and the relayer
+   (a different address) submits. Print tx hash, tx.from, the bidder address, and the
+   bidder's USDC balance before/after (it should drop by exactly the bid amount and
+   nothing for gas).
+
+2. MockUSDC has a backdoor: `if (v != 0)` skips signature verification, and tests 19 and
+   25 use it via `_relayedBidNoSig`. I asked for a mock that enforces receiveWithAuthorization
+   exactly like real USDC. Remove the v == 0 bypass entirely, make tests 19 and 25 sign real
+   ReceiveWithAuthorization messages with vm.sign over the lot-bound nonce, and add the
+   RelayedBid vm.expectEmit back to test 19. Run forge test and paste the summary.

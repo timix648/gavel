@@ -1,0 +1,22 @@
+Turn 19 - two small fixes from my browser check of Turn 18. Quick preset.
+
+1. The slide works in both directions (I read the running animations:
+   old(root) 0 -> -100%, new(root) 100% -> 0 forward; mirrored back). But the nav
+   cross-fade is wrong: BOTH ::view-transition-old(gavel-nav) and
+   ::view-transition-new(gavel-nav) animate opacity 0 -> 1, so the outgoing nav fades IN
+   and both navs overlap mid-transition. The old one must go 1 -> 0. Fix the keyframes
+   (fade-out for old, fade-in for new) in both directions.
+
+2. Em-dashes are banned in visible copy (DESIGN.md sections 2 and 6). Still visible:
+   - src/logStore.ts:310 "Loading paused — public RPC is rate-limiting..." (shown on /proof)
+   - src/pages/Create.tsx:216 "Create lot — bond X USDC"
+   - src/pages/Landing.tsx:455 "Arc — sub-second blocks"
+   - src/pages/Landing.tsx:553 "Bidders pay in USDC — directly or gasless..."
+   - src/pages/Me.tsx:215 "N clean sales — 50% bond"
+   - src/utils.ts:49 "Network error — please retry."
+   - src/utils.ts:8 and :23 return "—" as an empty placeholder; use "-" instead.
+   Rewrite each with a comma, a period, a colon or a middle dot, e.g. "Arc, sub-second
+   blocks", "Create lot (bond 0.10 USDC)", "3 clean sales · 50% bond". Leave developer-only
+   error strings in onchain-*.ts and tracing.ts alone. Then grep src/ for "—" and "–"
+   outside comments and confirm none remain in user-facing text.
+Lint + typecheck, two-line report.

@@ -1,0 +1,205 @@
+{
+  "version": 1,
+  "entries": {
+    "bun.lock": {
+      "hash": "dad271cf368aae56d327024a34d99a867c543ef37fb5e6efe16de44c1c232588",
+      "pulledAt": "2026-10-21T23:27:48.291Z"
+    },
+    "index.html": {
+      "hash": "6034fcaea44559b202d2959eb3e92286f1ce98ac646badc7eaa9bd010aae7dd4",
+      "pulledAt": "2026-10-24T10:15:30.067Z"
+    },
+    "package.json": {
+      "hash": "4ac297bd4d8a10e9100eb0cdd43b26a697d0411a72648eba08f5a3c144aa624a",
+      "pulledAt": "2026-10-24T10:15:30.070Z"
+    },
+    "postcss.config.js": {
+      "hash": "f0156321fafa19749b38a82ea29e7b1786a1f727b67372ef40cc66de0ed898fb",
+      "pulledAt": "2026-10-21T23:27:48.297Z"
+    },
+    "tailwind.config.js": {
+      "hash": "555eef9165f1a98ed3e0df0619e694b1c2a33a57ecd95c37f2350be9ff3700c6",
+      "pulledAt": "2026-10-23T10:41:16.665Z"
+    },
+    "tsconfig.json": {
+      "hash": "83c5d5d611eb4e1c4a4350829e46111577c6bc7d9fb06cfb961817aad721a147",
+      "pulledAt": "2026-10-21T23:27:48.300Z"
+    },
+    "vite.config.ts": {
+      "hash": "21ffee269435d1a2845529b269f43af55ef0144edd867ab4f22d392db41bb934",
+      "pulledAt": "2026-10-22T00:03:30.066Z"
+    },
+    "src/App.tsx": {
+      "hash": "62851e6a46dd1d761a61fbd5bd00a789a8720126f56b8b0a789f65be256d1967",
+      "pulledAt": "2026-10-24T11:11:17.928Z"
+    },
+    "src/abi.ts": {
+      "hash": "e4500e31f5f8cfad49bccf66a472cd7dafe4b44bafa588de0e8d7cfcae2b5208",
+      "pulledAt": "2026-10-23T09:54:14.062Z"
+    },
+    "src/chain.ts": {
+      "hash": "d147572a389d54438afa198347f841a4a8c0fb583149b3dc5c4ffac197df9f1d",
+      "pulledAt": "2026-10-25T11:59:52.714Z"
+    },
+    "src/config.ts": {
+      "hash": "d3bcc8e1474dd7f0912503dc8b4ac160a875ca96694064520bff42199c636abe",
+      "pulledAt": "2026-10-24T10:15:30.091Z"
+    },
+    "src/console-capture.ts": {
+      "hash": "ab682e27bfb8efb8b1084ab91ff604baee9b2128892a8036dc0584d82733d3ce",
+      "pulledAt": "2026-10-21T23:27:48.313Z"
+    },
+    "src/index.css": {
+      "hash": "523e45ee5b2364bbdbd9a6b1ef52e7909f42423ec0963fbfdd147d31bcce3e64",
+      "pulledAt": "2026-10-24T11:13:36.112Z"
+    },
+    "src/logStore.ts": {
+      "hash": "a5bcab92d3538a32e7404a8e830151f47d0592e8ffa109bafe061c2f6307b986",
+      "pulledAt": "2026-10-24T11:13:36.117Z"
+    },
+    "src/main.tsx": {
+      "hash": "6f977f399f0ff4ff3021759c570689a5080a55bc7f80fdbeffc6edd1551f2bc3",
+      "pulledAt": "2026-10-24T11:11:17.937Z"
+    },
+    "src/onchain-facts.ts": {
+      "hash": "c7c314ada2f6be684dcd24c703fee3fec68f8bc0a2c7c9d1bcf3633c33199abd",
+      "pulledAt": "2026-10-21T23:27:48.322Z"
+    },
+    "src/onchain-money.ts": {
+      "hash": "1ac379552459f345f429d85b6d3f9f5f052be0c62ab630c6b111ea6f7a78af4f",
+      "pulledAt": "2026-10-21T23:27:48.325Z"
+    },
+    "src/onchain-wait.ts": {
+      "hash": "e6b89dcf266213adea50cd35dd761aa8adfc4fb121dd90c702fb635d98bb1577",
+      "pulledAt": "2026-10-21T23:27:48.327Z"
+    },
+    "src/tracing.ts": {
+      "hash": "3ed5452d5abd6057c818e3362be325c3f1566523927e496e49e0eaf1bafd64b8",
+      "pulledAt": "2026-10-21T23:27:48.329Z"
+    },
+    "src/useBlock.ts": {
+      "hash": "106bdb788e2e5174f25eeb9691100d3778aa1162f20baab20181596694b0110e",
+      "pulledAt": "2026-10-21T23:27:48.331Z"
+    },
+    "src/useLogs.ts": {
+      "hash": "3e468287e1ba420902a14b63685de6b12ee5e57c89cc69422128cc5cfe89f1a1",
+      "pulledAt": "2026-10-22T00:03:30.124Z"
+    },
+    "src/useLot.ts": {
+      "hash": "de5c58a29f96757956fae1f8b10ea6a7e9b044c582ce609cbddd762a03a079b9",
+      "pulledAt": "2026-10-21T23:27:48.333Z"
+    },
+    "src/utils.ts": {
+      "hash": "2b80437ffe9fdd577f09e2710d503c69209daf8babbb8ae81f247b9cb9d926e0",
+      "pulledAt": "2026-10-24T11:13:36.125Z"
+    },
+    "src/vite-env.d.ts": {
+      "hash": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5",
+      "pulledAt": "2026-10-21T23:27:48.335Z"
+    },
+    "src/components/Layout.tsx": {
+      "hash": "6c4cfa5e8a4a9bdd48fa1d3a870bcbecf72e64d8c8bd77b9121ceb13e18c9901",
+      "pulledAt": "2026-10-24T11:11:17.944Z"
+    },
+    "src/components/LotCard.tsx": {
+      "hash": "38ec083fea7de70452432bb8e357d0b9707c79d1f1241779647be9ce4b572c86",
+      "pulledAt": "2026-10-24T11:11:17.946Z"
+    },
+    "src/pages/AuctionRoom.tsx": {
+      "hash": "747df5dbdb9ed831c7f4dc2fc8ec462385624a1968fdd00fc8a0cc9ecb8d3783",
+      "pulledAt": "2026-10-24T09:57:08.636Z"
+    },
+    "src/pages/Create.tsx": {
+      "hash": "9722dd284aa766cdf13137d1a1a8d2c66fe2e39b8e49eb301f0e2cd012970db4",
+      "pulledAt": "2026-10-25T11:59:52.716Z"
+    },
+    "src/pages/Lobby.tsx": {
+      "hash": "60962a39ab5cf375ce6b1cf67b2dfb3621ae1dc047fcc8005f71cd3e6bbc4735",
+      "pulledAt": "2026-10-24T11:11:17.953Z"
+    },
+    "src/pages/Me.tsx": {
+      "hash": "522bccce903b056b6a4b18b8faa634548b4375a239490fe747d0a3ccc0edcba2",
+      "pulledAt": "2026-10-24T11:13:36.138Z"
+    },
+    "src/pages/Proof.tsx": {
+      "hash": "a08d647c0eeace4b91ca9b9428cc8a3bec96507198c45fe9c601864a4a5fb5b6",
+      "pulledAt": "2026-10-23T10:38:42.975Z"
+    },
+    "contracts/out/AuctionHouse.sol/AuctionHouse.json": {
+      "hash": "7aa511f27612fa136bafba215d7aba70469f3f819e74255d64d3ba248d0bbe80",
+      "pulledAt": "2026-10-23T09:54:30.441Z"
+    },
+    "contracts/out/AuctionHouse.sol/IUSDC3009.json": {
+      "hash": "059988cb81cf25013841d385e2b9f35b7dcd3661361165cda03056c5c0393c80",
+      "pulledAt": "2026-10-23T09:54:30.462Z"
+    },
+    "keeper/README.md": {
+      "hash": "23fb3fb18c1d267285f59ddfc7a8ee849a4c08675c24ca1473a57383f3fa47e1",
+      "pulledAt": "2026-10-25T11:59:52.704Z"
+    },
+    "keeper/chain-def.ts": {
+      "hash": "62d1afbbb9ab23228f2946f92088546b1f372e5a4005916fcc19beb2c6f45af3",
+      "pulledAt": "2026-10-25T11:59:52.706Z"
+    },
+    "keeper/index.ts": {
+      "hash": "7de4b193559a03a20905be757181c507e78601b5b89c842ae0ebd8d7dd9f08bb",
+      "pulledAt": "2026-10-25T11:59:52.708Z"
+    },
+    "relayer/README.md": {
+      "hash": "c4862a59aa43490b23afc36762eb0e70e74cdbdce434cbf317dc68dab9d3f4de",
+      "pulledAt": "2026-10-25T11:59:52.711Z"
+    },
+    "relayer/index.ts": {
+      "hash": "bd2280a2158f8112b08cef1a728476024228a3450bb66340b77e924df85edbf7",
+      "pulledAt": "2026-10-25T11:59:52.713Z"
+    },
+    "contracts/out/AuctionHouse.sol/IReputationWriter.json": {
+      "hash": "d941af330d4d2915aad3a86d0274f342af3417de995036703fc5cb831763de08",
+      "pulledAt": "2026-10-23T09:54:30.455Z"
+    },
+    "contracts/out/ReputationWriter.sol/IAuctionHouse.json": {
+      "hash": "397742d3a8d0a8d4059a80d014a6069f1f63358feb726884a4b3cbd50e26ffb0",
+      "pulledAt": "2026-10-23T09:54:30.464Z"
+    },
+    "contracts/out/ReputationWriter.sol/IIdentityRegistry.json": {
+      "hash": "64a0f2f52c364f99a58f2090804d7fd0f1d51f7dbebadf79399cc0207bff8a39",
+      "pulledAt": "2026-10-23T09:54:30.465Z"
+    },
+    "contracts/out/ReputationWriter.sol/IReputationRegistry.json": {
+      "hash": "09cb55e3dd4e93a22872f0c9ea762c8529db9b7cd54487d776432a7010a48528",
+      "pulledAt": "2026-10-23T09:54:30.465Z"
+    },
+    "contracts/out/ReputationWriter.sol/ReputationWriter.json": {
+      "hash": "6014766f1ecaa5f6e1eb955a89bb5d1ce91cd72dfa83b0c4c2ec788ca53ce052",
+      "pulledAt": "2026-10-23T09:54:30.466Z"
+    },
+    "src/useTheme.ts": {
+      "hash": "64f295660ec2075c0183c665d63ad25c84a2f23c18f46dc5f95e16105e047c1f",
+      "pulledAt": "2026-10-23T10:38:42.959Z"
+    },
+    "public/favicon.svg": {
+      "hash": "4b45facec02057f84a122daea027891c4eda135fb65222346188777a0e56e5ff",
+      "pulledAt": "2026-10-24T10:15:30.088Z"
+    },
+    "src/components/AuctionPanel.tsx": {
+      "hash": "e100766d1151e3f79de108c9c72dbb6ac2e74dc19bedeeb6ab35c2666d6d1cae",
+      "pulledAt": "2026-10-24T10:48:15.617Z"
+    },
+    "src/pages/Landing.tsx": {
+      "hash": "15e5eb526046a095d5a7c951c53738c349425bb8e5c2220abb465eddb78cf064",
+      "pulledAt": "2026-10-25T11:59:52.718Z"
+    },
+    ".oxlintrc.json": {
+      "hash": "20310a6cebeb5380dc1207926cd97e0b455cba97beb118c8cce74141bc5049c2",
+      "pulledAt": "2026-10-24T11:38:34.599Z"
+    },
+    "AGENTS.md": {
+      "hash": "ad4911f90d5898932f720fe0605b6d2df5438d26e374fd260afb86993c5e2a53",
+      "pulledAt": "2026-10-25T11:22:26.329Z"
+    },
+    "e2e-local.ts": {
+      "hash": "1395d73a3c3584e917e16bf324427f80fb0a5684faf716577d6877dab901dbce",
+      "pulledAt": "2026-10-25T11:22:26.332Z"
+    }
+  }
+}

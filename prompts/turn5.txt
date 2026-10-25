@@ -1,0 +1,39 @@
+Turn 5 - Memo receipts and ERC-8004 seller reputation. Balanced preset.
+
+STEP 0 - verify before building, on Arc testnet:
+- Memo contract 0x5294E9927c3306DcBaDb03fe70b92e01cCede505: confirm code exists and get
+  its interface (from docs.arc.io or by reading verified source on the explorer). The
+  blueprint says memo(target, data, memoId, memoData) and "direct EOA callers only".
+- ERC-8004 ReputationRegistry 0x8004BAa17C55a88189AE136b182e5fdA19dE9b63: confirm code
+  exists on testnet AND on mainnet (chain 5042, https://rpc.mainnet.arc.io), and get the
+  giveFeedback ABI. Also find the IdentityRegistry it depends on (feedback is usually given
+  to a registered agentId, not a raw address) and what registering a seller requires.
+Report exactly what you found. If either contract or ABI differs from what follows,
+adapt and tell me what changed.
+
+MEMO RECEIPTS - Memo only accepts direct EOA callers, so AuctionHouse cannot call it.
+Instead, in the frontend, when someone presses Settle, send the settle call THROUGH Memo
+from their wallet: memo(target = AuctionHouse, data = settle calldata,
+memoId = keccak256(abi.encode(lotId)), memoData = abi.encode("gavel.settle", lotId,
+winner, amount)). Fall back to a plain settle() if the wallet is a smart account. Show the
+decoded memo on /lot/:id and as a column on /proof (read Memo's event).
+
+REPUTATION - keep it off the critical path so a registry problem can never block settle:
+- Add a separate ReputationWriter contract (owner = deployer) with
+  recordSale(lotId) callable by anyone after Hammer + confirmDelivery: it reads the lot
+  from AuctionHouse, requires delivery confirmed (or bond released after timeout without
+  dispute), and calls giveFeedback for the seller with a positive score; a lot resolved
+  against the seller gives a negative score. Each lot can be recorded once.
+- Seller bond sizing from reputation: AuctionHouse v3 currently uses bond = reserve.
+  Add a view in ReputationWriter, cleanSales(seller), and in AuctionHouse make the bond
+  50% of reserve when cleanSales(seller) >= 3, else 100%. AuctionHouse must not revert
+  if the ReputationWriter call fails - wrap it in try/catch and default to 100%.
+- If giving feedback requires the seller to hold an ERC-8004 identity, add a one-click
+  "Register as seller" on /create using the IdentityRegistry, and record sales only for
+  registered sellers (unregistered sellers simply keep 100% bonds).
+Tests: recordSale only after confirmed delivery; once per lot; negative on dispute lost;
+bond drops to 50% after 3 clean sales; registry revert does not block list or settle.
+Run forge test and show the output; keep every earlier test passing.
+
+Redeploy to Arc testnet, update src/chain.ts, then run one settle-through-Memo and one
+recordSale on testnet and print both tx hashes. Report what actually happened.

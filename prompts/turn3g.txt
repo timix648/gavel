@@ -1,0 +1,21 @@
+Your explanation for the 0 event counts was wrong. The whole flow test spans blocks
+68425249-68425515 (266 blocks), well inside your 10,000-block window. I checked with
+`cast logs --address 0x58a0d1f5426e5ed1e47db45e3eec1e73179dc2f3` over that range and found
+Extended x1, Hammer x1, Outbid x2 (and Listed in the list tx 0xf69f1d...). So the events
+exist and your getLogs/decoding is broken.
+
+1. Find the actual cause. Likely suspects: event ABI in src/abi.ts or the script not
+   matching the deployed v2 contract (v2 changed the Listed/Bid signatures and added
+   bond events - check every event signature against contracts/out/AuctionHouse.sol/
+   AuctionHouse.json), a stale ABI from v1, wrong address, or a from/to block bug.
+   Compute topic0 for each event from the artifact and compare with the topic0 in the
+   receipt logs of the txs above. Tell me which it was.
+2. Fix it in scripts/flow-test.ts AND in the frontend (src/abi.ts, src/useLogs.ts,
+   src/pages/Proof.tsx, and anything else that reads events). Generate the ABI from the
+   compiled artifact, not hand-written, so it cannot drift again.
+3. Re-run only the event-read part of the flow test over blocks 68425249-68425515 and
+   print the counts per event. Expected: Listed 1, Bid 3, Outbid 2, Extended 1, Hammer 1,
+   BondHeld 1, Claimed 1.
+4. Load /lot/0 and /proof in the preview and confirm what each shows: the settled lot,
+   winner, 0.20 winning bid, bid history of 3, extension, and the /proof totals. Report
+   exactly what renders, not what it should render.

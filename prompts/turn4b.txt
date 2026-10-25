@@ -1,0 +1,33 @@
+I ran the app locally and opened /proof in a real browser. It shows:
+  "Scan error: getLogs failed on [67735657, 67737656]: LimitExceededRpcError:
+   Request exceeds defined limit."
+I then probed https://rpc.testnet.arc.io directly with curl: every eth_getLogs returns
+  {"code":-32005,"message":"rate limit exceeded"}
+for a 50,000-block range AND for the 2,000-block range. Earlier, single calls over
+100,000 blocks succeeded. So the limit is REQUEST RATE, not range size. The current
+halve-and-retry logic is wrong for this error: it fires more, faster requests and makes
+the throttling worse.
+
+Fix src/logStore.ts:
+1. Distinguish the errors. On -32005 / "rate limit" (and HTTP 429): do NOT halve. Wait and
+   retry the SAME range with exponential backoff + jitter (1s, 2s, 4s, 8s, 16s, cap 30s,
+   up to 8 attempts). Only halve on a genuine range/size error ("query returned more than",
+   "block range", "response size").
+2. Pace normal scanning: at most 1 getLogs in flight, minimum 400 ms between calls.
+3. Use larger chunks: try 100,000 blocks first (verified to work when not throttled).
+4. On final failure keep everything already loaded on screen, show "Loading paused -
+   public RPC is rate-limiting, retrying in Ns" with the countdown, and resume
+   automatically. Never throw away partial results.
+5. Persist the decoded log cache and high-water mark in localStorage (keyed by chainId +
+   contract address + DEPLOY_BLOCK) so a returning visitor only scans new blocks. Wrap
+   every storage access in try/catch.
+6. Make the RPC URL list in src/chain.ts an array and fall back to the next URL on repeated
+   rate limits (for now the list is just the public RPC; leave a comment that a provider
+   URL can be added).
+7. Same backoff for the watchers/polling in AuctionRoom so a busy room cannot trip it.
+
+Then write a tiny node/bun script that imports the same scan logic and runs it from
+DEPLOY_BLOCK to head against the real RPC, printing each chunk, any backoff waits, total
+calls and total time, and the final per-event counts. Run it and paste the output.
+
+8. AuctionHouse was redeployed as v3 at 0xd852f946ce33d314ebecf6b3465376c8cc8768b1 in block 68429852. Confirm src/chain.ts has that address and DEPLOY_BLOCK = 68429852n, and run the scan script against v3.

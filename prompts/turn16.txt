@@ -1,0 +1,13 @@
+Turn 16 - rebuild the landing page "Why Arc" comparison (BlockComparison in
+src/pages/Landing.tsx). Spec: context/DESIGN.md section 8.3.3b - read it fully. Balanced
+preset, frontend only, do not touch other sections.
+
+Feedback that triggered this: users only see the animation if they press Replay, and two
+bars do not explain why block time matters. Build the two-lane block-timeline race:
+autoplay on scroll into view, loop with a hold, pause off-screen and on hover/focus,
+"Watch again" link, reduced-motion final-state render, one shared timeline driving block
+tiles, the bid dot, both countdowns, the +10 s extension, and the three-beat captions.
+
+Also, from my review: the live numbers band shows bid volume as "3 USDC"; format USDC
+figures with 2 decimals ("3.05 USDC").
+Lint + typecheck, short report.

@@ -1,0 +1,22 @@
+Turn 21: pre-mainnet security fixes, review, test, and redeploy AuctionHouse v6 from Studio.
+
+Context. While verifying testnet lot #115 we found the seller bid on their own lot (shill bidding).
+A review outside Studio produced three fixes, uploaded with this turn (contracts/AuctionHouse.sol,
+contracts/LotVault.sol, contracts/test/AuctionHouse.t.sol). The frontend files uploaded with this turn
+are hand fixes made since turn 20 (logged in STUDIO.md); keep them as they are.
+
+1. Review the three fixes critically and say if any is wrong or incomplete:
+   a. _bidCore: require(bidder != lot.seller, "AuctionHouse: seller cannot bid") - covers bid() and bidWithAuthorization().
+   b. _bidCore: require(amount > 0, "AuctionHouse: zero bid") - stops a free win on a 0-reserve lot.
+   c. LotVault.release uses transferFrom instead of safeTransferFrom, so a winner contract that
+      rejects ERC-721 cannot make settle() revert forever and lock the seller's proceeds.
+   Also look for anything else a pre-mainnet review should catch in AuctionHouse, LotVault, GavelLot,
+   ReputationWriter. Report findings by severity; fix only real issues, with a test for each.
+2. Run the full Foundry suite. Expect 37+ passing (tests 29, 34-37 are new). Report the exact count.
+3. Deploy to Arc Testnet from your deployer wallet: AuctionHouse (owner = your deployer), then
+   ReputationWriter(owner, auctionHouse, 0x8004A818BFB912233c491871b3d84c89A494BD9e,
+   0x8004B663056A597Dffe9eCcC1965A193B7388713). Do NOT call setReputationWriter (bond discount stays
+   off, as in v5). Report AuctionHouse, ReputationWriter and gavelLot() addresses and the deploy block.
+4. Update src/chain.ts (AUCTION_HOUSE_ADDRESS, DEPLOY_BLOCK, REPUTATION_WRITER_ADDRESS),
+   relayer/index.ts DEFAULT_AH_ADDRESS, keeper/index.ts default AUCTION_HOUSE and DEPLOY_BLOCK,
+   e2e-local.ts AH. Change nothing else in the frontend.

@@ -1,0 +1,34 @@
+Turn 6 - the always-on house auction + UI polish. Quick preset for review. Keep it
+focused; do not change contracts.
+
+A. HOUSE AUCTION KEEPER - a small Bun service in keeper/ (separate from the app and the
+   relayer), so a reviewer can bid on a live lot at any time:
+   - Every cycle: if no house lot is live, list a new one from the house wallet
+     (HOUSE_PRIVATE_KEY env, never logged): title from a rotating list of digital lots
+     (e.g. "30-min code review", "Logo sketch", "Custom avatar", "Domain name idea",
+     "Shout-out post"), reserve 0.10 USDC, minIncrement 0.05, duration 120 s; image URL
+     optional.
+   - When a house lot's deadline passes, call settle() (anyone can), then for lots with a
+     winner call confirmDelivery is NOT the keeper's job - leave it to the winner; but
+     after the 7-day timeout call releaseBondAfterTimeout for old house lots.
+   - Approve USDC for the bond once with a sensible allowance; check balance before each
+     list and log a clear warning below 2 USDC.
+   - maxFeePerGas >= 20 gwei, maxPriorityFeePerGas 0; one tx in flight; exponential
+     backoff on RPC -32005 like logStore; never crash-loop.
+   - Logs one line per action with tx hash; GET /health returns {lastAction, liveLotId,
+     balance}.
+   - README section: env vars, how to run, how to host (e.g. a free worker/VM), cost per
+     day estimate (gas per list + settle x cycles per day).
+   - Run it in the sandbox for at least two full cycles against testnet and paste the log.
+
+B. UI POLISH (from my review of the running app):
+   1. Show the lot TITLE (and image if present) parsed from lotURI on the lobby cards,
+      the auction room header and /me, instead of "Lot #0". Fall back to "Lot #N" only if
+      the URI cannot be parsed.
+   2. Bid history rows are too low-contrast on the dark background - use the primary text
+      colour for amount and address; keep the tx link muted.
+   3. /proof: hide OwnershipTransferred and any other admin events from the table and the
+      totals; show only market events (Listed, Bid, RelayedBid, Outbid, Extended, Hammer,
+      Unsold, Claimed, BondHeld, BondReleased, Disputed, DisputeResolved, SaleRecorded).
+   4. Add a "House auction - bid now" banner on the lobby linking to the current house lot.
+   Run lint + typecheck. Report briefly.

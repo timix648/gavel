@@ -1,0 +1,42 @@
+Build the Gavel frontend against the deployed AuctionHouse v2 (Arc testnet,
+0x58a0d1f5426e5ed1e47db45e3eec1e73179dc2f3; read GavelLot and LotVault addresses from
+its public getters). Mobile-first. Make every chain address/chainId come from ONE config
+file (src/chain.ts) so I can repoint to Arc mainnet (chain 5042, RPC
+https://rpc.mainnet.arc.io, explorer https://explorer.arc.io) by editing only that file.
+
+The auction room (/lot/:id) is the product - make it feel live:
+- A large countdown driven by BLOCK TIMESTAMPS (latest block.timestamp vs lot.deadline),
+  not the browser clock; interpolate between blocks for smoothness but resync on every
+  block. Flash and show "+10s" when an Extended event lands.
+- Current high bid and bidder (short address), updating within a second of each block
+  (watch events + poll every block).
+- Bid history streaming in, newest first, each row linking to the explorer tx.
+- One big Bid button showing the exact next valid amount (reserve for the first bid,
+  else highestBid + minIncrement), with automatic USDC approve if allowance is short.
+  Display USDC with 2 decimals (6-decimal units underneath).
+- "You were outbid - $X claimable" banner with one-tap claim().
+- At zero: a hammer animation, a Settle button anyone can press, and the settlement tx
+  hash once Hammer lands.
+- Winner view after hammer: Confirm delivery / Dispute buttons; show bond status and
+  the 7-day release time.
+
+Other screens:
+- / : list of live lots (soonest ending first) and recently settled.
+- /create : create a lot (title, description, image URL -> lotURI as a data: JSON URI,
+  reserve, minIncrement, duration presets 2m / 5m / 30m). Show the bond = reserve.
+- /me : my bids, my wins, my claimable with claim button.
+- /proof : reads Listed, Bid, Outbid, Extended, Hammer, Unsold, Claimed, BondReleased
+  events live from chain (getLogs from the deploy block, paginated) and shows totals:
+  USDC moved through bids, bids placed, distinct bidders, lots settled, plus a table of
+  every event linking to the explorer. Works logged out, no wallet needed.
+
+Wallet: injected wallets via the existing wagmi/ConnectKit setup, with a one-click
+"Add Arc network" button using wallet_addEthereumChain (values from src/chain.ts).
+Read-only views must work without a wallet connected.
+
+Copy tone: commercial, plain. No gambling language. Visual style: dark, clean, one accent
+colour, big numerals for the clock and bid.
+
+When done, run the full flow yourself in the preview on testnet: create a 2-minute lot,
+place two bids from different accounts if you can, let it settle, and report what worked
+and anything that did not.

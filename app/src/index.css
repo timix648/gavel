@@ -1,0 +1,173 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Gavel design tokens — DARK (default) ───────────────────────────────── */
+/* Stored as space-separated RGB channels so Tailwind's / opacity modifier   */
+/* works: bg-bg/90 → rgb(var(--bg) / 0.9). Use rgb(var(--x)) in plain CSS.  */
+:root {
+  --bg:           14 14 12;
+  --surface:      22 22 19;
+  --surface-2:    30 30 26;
+  --line:         42 42 37;
+  --ink:          242 241 236;
+  --ink-2:        185 183 174;
+  --ink-3:        126 124 115;
+  --accent:       255 107 44;
+  --accent-text:  255 107 44;   /* text/icons on dark bg — same fill in dark  */
+  --accent-ink:   20 10 4;
+  --good:         63 185 122;
+  --warn:         229 181 74;
+  --grain-opacity: 0.03;
+  --shadow-clock: 0 20px 60px -20px rgb(255 107 44 / .18);
+}
+
+/* ── Light mode tokens ───────────────────────────────────────────────────── */
+:root[data-theme="light"] {
+  --bg:           243 243 240;
+  --surface:      251 251 249;
+  --surface-2:    235 235 230;
+  --line:         218 218 211;
+  --ink:          22 22 20;
+  --ink-2:        74 73 67;
+  --ink-3:        110 108 100;
+  --accent:       232 85 30;    /* fill: buttons, live-clock tag               */
+  --accent-text:  181 60 10;    /* text/icons on light bg — 5.22:1 on --bg     */
+  --accent-ink:   20 10 4;      /* text on accent buttons — 5.35:1 on --accent */
+  --good:         31 138 85;
+  --warn:         168 116 18;
+  --grain-opacity: 0.02;
+  --shadow-clock: 0 20px 60px -20px rgb(232 85 30 / .14);
+}
+
+/* ── color-scheme follows theme ─────────────────────────────────────────── */
+:root,
+:root[data-theme="dark"]  { color-scheme: dark;  }
+:root[data-theme="light"] { color-scheme: light; }
+
+/* ── Base reset ──────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: rgb(var(--bg));
+  color: rgb(var(--ink));
+  font-family: 'Geist Sans', 'Geist', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Grain overlay — fixed, pointer-events-none, opacity from token */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+  opacity: var(--grain-opacity);
+}
+
+/* ── Typography helpers ─────────────────────────────────────────────────── */
+.font-mono,
+.mono,
+[class*="tabular"] {
+  font-family: 'Geist Mono', 'GeistMono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Focus ring ─────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: rgb(var(--bg)); }
+::-webkit-scrollbar-thumb { background: rgb(var(--line)); border-radius: 3px; }
+
+/* ── Sonner toast overrides ─────────────────────────────────────────────── */
+[data-sonner-toaster] {
+  --normal-bg:     rgb(var(--surface));
+  --normal-border: rgb(var(--line));
+  --normal-text:   rgb(var(--ink));
+}
+
+/* ConnectKit token overrides are applied via customTheme prop in main.tsx
+   so both light and dark modes are handled. No static CSS overrides needed. */
+
+/* ── Utility: clock shadow (token-driven) ───────────────────────────────── */
+.shadow-clock {
+  box-shadow: var(--shadow-clock);
+}
+
+/* ── View Transitions: landing ↔ app slide ───────────────────────────────
+   Only fires in browsers that support document.startViewTransition (Chrome
+   111+, Edge 111+, Safari 18+). Firefox navigates instantly (fallback).
+   prefers-reduced-motion: skip entirely.
+   ─────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  /* Give the nav its own transition name so it cross-fades rather than
+     sliding — the landing nav and app nav are different components. */
+  header {
+    view-transition-name: gavel-nav;
+  }
+
+  /* ── Forward: landing → app ─────────────────────────────────────────── */
+  /* Outgoing page (landing) slides out to the left */
+  html[data-nav="forward"]::view-transition-old(root) {
+    animation: 550ms cubic-bezier(0.32, 0.72, 0, 1) both slide-out-left;
+  }
+  /* Incoming page (app) slides in from the right */
+  html[data-nav="forward"]::view-transition-new(root) {
+    animation: 550ms cubic-bezier(0.32, 0.72, 0, 1) both slide-in-right;
+  }
+
+  /* ── Back: app → landing ────────────────────────────────────────────── */
+  /* Outgoing page (app) slides out to the right */
+  html[data-nav="back"]::view-transition-old(root) {
+    animation: 550ms cubic-bezier(0.32, 0.72, 0, 1) both slide-out-right;
+  }
+  /* Incoming page (landing) slides in from the left */
+  html[data-nav="back"]::view-transition-new(root) {
+    animation: 550ms cubic-bezier(0.32, 0.72, 0, 1) both slide-in-left;
+  }
+
+  /* Nav cross-fades: outgoing fades out, incoming fades in */
+  html[data-nav]::view-transition-old(gavel-nav) {
+    animation: 320ms ease both vt-fade-out;
+  }
+  html[data-nav]::view-transition-new(gavel-nav) {
+    animation: 320ms ease both vt-fade-in;
+  }
+
+  @keyframes slide-out-left {
+    from { transform: translateX(0);     opacity: 1; }
+    to   { transform: translateX(-100%); opacity: 0.6; }
+  }
+  @keyframes slide-in-right {
+    from { transform: translateX(100%);  opacity: 0.6; }
+    to   { transform: translateX(0);     opacity: 1; }
+  }
+  @keyframes slide-out-right {
+    from { transform: translateX(0);     opacity: 1; }
+    to   { transform: translateX(100%);  opacity: 0.6; }
+  }
+  @keyframes slide-in-left {
+    from { transform: translateX(-100%); opacity: 0.6; }
+    to   { transform: translateX(0);     opacity: 1; }
+  }
+  @keyframes vt-fade-out {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+  }
+  @keyframes vt-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+}

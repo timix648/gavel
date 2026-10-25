@@ -1,0 +1,31 @@
+Turn 20 - fixes from the user's own test in Chrome at 1920 px. Balanced preset,
+frontend only.
+
+1. /lots NEVER LOADS (top priority). The page stays on skeletons forever, both before and
+   after connecting a wallet. The browser console shows 351 errors, nearly all HTTP 429
+   from https://rpc.testnet.arc.io. The lobby's lots multicall fails, the catch keeps the
+   skeleton, and nothing retries with backoff or tells the user.
+   a) RPC load: in src/config.ts use http(url, { batch: { wait: 20 }, retryCount: 4,
+      retryDelay: 1500 }) so concurrent reads go out as ONE JSON-RPC batch, and set the
+      wagmi/viem pollingInterval to 4000 ms. useBlock / watchBlocks must not poll faster
+      than that. Throttle the lobby and landing house-lot refresh to at most once per
+      4 s (not every block) and pause all polling while document.hidden.
+   b) Resilience: reuse logStore's rate-limit backoff for the lobby and landing multicalls
+      (same -32005 / 429 detection, exponential delay). While a first load is failing,
+      replace the skeleton after ~6 s with an inline line "The public Arc RPC is busy.
+      Retrying in Ns" with a live countdown, and keep retrying. Never sit on skeletons
+      silently.
+   c) RPC override for production: read VITE_RPC_URL (a provider URL) first, then fall
+      back to the public RPC, in src/chain.ts. Document it in README.
+2. Create page preview: the preview card shows "LIVE" and a countdown ticking from the
+   chosen duration as soon as you pick it, which makes users think the auction already
+   started. The auction only starts when the list transaction confirms. In the preview,
+   show the duration static ("30:00", no ticking) and the tag "Preview" instead of "LIVE".
+3. Header before a wallet is connected shows both "Switch to Arc Testnet" and "Connect
+   wallet". With no wallet there is nothing to switch: show only "Connect wallet". Show
+   the switch button only when connected on the wrong chain.
+4. Landing "Why Arc" animation: in the final frame the "Back to 0:10" chip is clipped by
+   the right edge of the lane ("Back to 0" visible). Keep the chip inside the lane: anchor
+   it to the LEFT of the close line when the line is in the right 25% of the track, and
+   make sure it never overflows at 375 px either.
+Lint + typecheck, short report.

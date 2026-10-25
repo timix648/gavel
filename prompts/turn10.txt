@@ -1,0 +1,19 @@
+Turn 10 - three bugs found by running the full stack locally (relayer + keeper on my
+machine, frontend in a browser, a scripted auction on lot #16 of v5). Quick preset.
+Small, targeted fixes only.
+
+1. relayer/index.ts gas accounting is off by 10^6. receipt.gasUsed * effectiveGasPrice is
+   in NATIVE units (18 decimals on Arc). The code divides by 1e12 and prints that as USDC,
+   so /stats reported "7991.26" USDC after 3 relayed bids. The relayer's real USDC balance
+   went 20.000000 -> 19.992008 (about 0.008 USDC for 3 bids; one bid used 127,481 gas at
+   20 gwei = 0.00255 USDC). Fix: keep native units internally and display with
+   formatUnits(x, 18) (or divide by 1e18). Fix the per-bid log line too. My Turn 4 prompt
+   said "/ 1e12" - that converts to 6-decimal base units, not to dollars; my mistake.
+2. AuctionRoom gasless bid: validBefore = Date.now()/1000 + 120 uses the bidder's PC clock.
+   I measured this PC 11 s behind Arc testnet; a clock more than 2 min slow would make
+   USDC reject the authorization as expired. Use the latest block timestamp from useBlock
+   (+ 120 s), falling back to Date.now only before the first block arrives. Same for the
+   bondDays display (use chain time).
+3. Copy: toasts "Bid placed!" and "Gasless bid submitted!" - remove the exclamation marks
+   (design spec section 6). Check the rest of src/ for "!" in user-facing strings.
+Lint + typecheck, short report.

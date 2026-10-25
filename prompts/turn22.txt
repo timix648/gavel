@@ -1,0 +1,26 @@
+Turn 22: repoint Gavel at Arc MAINNET.
+
+The audited v6 contracts (same source you tested in turn 21, 37/37 passing) were deployed to Arc mainnet
+(chain 5042) with arc-forge from the owner's wallet, since Studio deploys to testnet only:
+  AuctionHouse      0x24D890c1285D481cB6B8761318A8250C922956dd  (deploy block 27790604,
+                    tx 0xa17499eaed3ccc04ecb6a6939d9d8b8ec1f90a1e8de1ccd3fb44d0662861d7b2)
+  GavelLot          0x5f1a8677d47d39D28C75936574B3529686Bb9121
+  LotVault          0xeD8a17B1e9aF7cA83d501248985A2d8FfC575A2F
+  ReputationWriter  0x8865A988DD9ff40a55590C7ce136512bC6A2E1CD
+  Owner             0xBa6A590E4215CDE9448cd01A0B86531476E4dA0F
+Mainnet ERC-8004: IdentityRegistry 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432,
+ReputationRegistry 0x8004BAa17C55a88189AE136b182e5fdA19dE9b63. USDC, Memo and Multicall3 addresses are
+the same as testnet (verified on mainnet with eth_getCode).
+
+Also uploaded: Landing.tsx, Lobby.tsx, AuctionPanel.tsx and chain.ts with automated "house lots" removed.
+Gavel is a seller-run auction house: every lot is listed by a real seller. Keep that.
+
+Do this:
+1. src/chain.ts: CHAIN_ID 5042, NETWORK_LABEL 'Arc', CHAIN name/network/rpc https://rpc.mainnet.arc.io,
+   EXPLORER and blockExplorers https://explorer.arc.io, the four addresses above, DEPLOY_BLOCK 27790604n,
+   mainnet ERC-8004 registries. Keep the VITE_RPC_URL override and multicall3.
+2. relayer/index.ts: default AuctionHouse, chain and RPC to mainnet (env overrides still win).
+3. Search the frontend for any remaining testnet-only copy, faucet links or "testnet" labels and make them
+   correct for mainnet. Do not change layout, styling or behaviour.
+4. Run typecheck and lint. Report every file you changed.
+Do not deploy anything and do not touch the contracts.

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "gavel",
+      "runtimeExecutable": "cmd.exe",
+      "runtimeArgs": ["/c", "app\\dev.cmd"],
+      "port": 5173
+    }
+  ]
+}

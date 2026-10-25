@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="generator" content="Arc Studio by Circle — https://studio.arc.io" />
+    <meta name="description" content="Live USDC auctions on Arc. Bid in real time. Gasless bids supported." />
+    <title>Gavel — USDC Auction House</title>
+    <!-- Favicon: orange gavel on dark background -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <!-- Anti-flash: set data-theme before React mounts -->
+  <script>
+    (function(){try{var s=localStorage.getItem('gavel-theme');var d=document.documentElement;if(s==='light'){d.setAttribute('data-theme','light');}else if(s==='dark'){d.setAttribute('data-theme','dark');}else{if(window.matchMedia('(prefers-color-scheme: light)').matches){d.setAttribute('data-theme','light');}}}catch(e){}})();
+  </script>
+  </head>
+  <body>
+    <!-- Built with Arc Studio — https://studio.arc.io -->
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

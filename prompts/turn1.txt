@@ -1,0 +1,30 @@
+Build "Gavel", a live auction house on Arc using USDC via the ERC-20 interface at
+0x3600000000000000000000000000000000000000 (6 decimals). All maths in 6-decimal units;
+never use msg.value. Balanced preset.
+
+AuctionHouse:
+- list(lotURI, reserve, durationSecs) escrows a lot token in a LotVault plus a seller
+  bond, caps reserve at 5 USDC for v1, sets deadline = now + durationSecs.
+- bid(lotId, amount) requires amount >= highestBid + minIncrement, >= reserve, and
+  now < deadline. Pull USDC from the bidder. Credit the PREVIOUS high bidder to a
+  claimable mapping - never transfer to them directly, because Arc reverts transfers to
+  blocklisted addresses and one bad address must not freeze the auction. Then apply a
+  soft close: if deadline - now < 10 seconds and extensions < 30, set
+  deadline = now + 10 and increment extensions.
+- settle(lotId) requires now >= deadline. Transfer the lot from the vault to the winner
+  AND credit the seller in the same transaction so delivery and payment are atomic. With
+  no bids, return the lot and bond to the seller.
+- claim() pulls the caller's whole claimable balance.
+- cancel(lotId) only while there are no bids.
+
+LotVault: holds the lot token (an ERC-721 "GavelLot" minted by the seller at list time,
+tokenURI = lotURI) and releases it only when called by AuctionHouse.
+
+ReentrancyGuard on everything that moves USDC. Owner pause() halting list and bid but
+never blocking settle or claim. block.timestamp for deadlines only, never ordering.
+Do not use block.prevrandao.
+
+Emit Listed, Bid, Outbid, Extended, Hammer, Unsold, Claimed.
+
+This turn: contracts only, compiling cleanly. Tests and frontend come in later turns.
+Deploy to Arc testnet when it compiles.

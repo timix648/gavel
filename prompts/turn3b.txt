@@ -1,0 +1,16 @@
+Two fixes.
+
+1. DEPLOY_BLOCK = 400000n is wrong. AuctionHouse v2 was deployed in tx
+   0x5ab6159d82890efe67f6e79e4729769b7f031bc90896ec7d190ff68591c53df0, which is in Arc
+   testnet block 67707191. With 400000 the /proof page would issue ~33,000 getLogs calls
+   and never finish. Set DEPLOY_BLOCK = 67707191n in src/chain.ts, and add a comment that
+   it must be replaced with the mainnet deploy block on repoint. Also make /proof cache
+   results in memory and only fetch new blocks after the first load.
+
+2. I asked you to run the full flow in the preview and you only read contract state.
+   Please actually exercise it on testnet now using a script (contracts/script or a
+   bun script) with the funded test wallets you have access to: list a 2-minute lot with
+   0.10 USDC reserve and 0.05 increment, place two bids from two different addresses,
+   place one bid inside the final 10 seconds to trigger Extended, wait for the deadline,
+   settle, claim the outbid refund. Print every tx hash. Then load /lot/0 and /proof in
+   the preview and confirm the events show up. Report exactly what worked and what did not.

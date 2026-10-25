@@ -1,0 +1,19 @@
+/proof and useLogs are now correct but too slow: 2,000-block chunks with one serial
+getLogs per event type is ~3,600 sequential calls over the ~720k blocks since deploy.
+
+I measured the Arc testnet RPC: ONE getLogs filtered by address only (no topics) over
+100,000 blocks returns every AuctionHouse event in ~5 s with no error.
+
+Change both Proof.tsx and useLogs.ts to:
+- one address-filtered getLogs per chunk (no per-event calls), decode locally with
+  viem decodeEventLog against the full AuctionHouse ABI, ignore unknown topics;
+- chunk size 50,000 blocks; on a LimitExceeded / range error halve the chunk and retry
+  that range (down to 2,000), never silently drop a range - surface an error state;
+- keep the in-memory cache and high-water mark;
+- useLogs for one lot filters the decoded logs by lotId instead of issuing its own scan
+  (share one cached log store between pages).
+Put the chunk size in src/chain.ts.
+
+Then open the preview in your browser tool, load /proof and /lot/0, wait for loading to
+finish, and report what is ACTUALLY on screen (numbers, rows, time to finish loading).
+If you cannot observe the rendered page, say so plainly instead of predicting it.

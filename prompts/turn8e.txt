@@ -1,0 +1,9 @@
+Quick preset, one bug. The desktop header uses `bg-bg/90` and its computed background is
+rgba(0,0,0,0): Tailwind's opacity modifier does not work when the colour is a CSS
+variable holding a hex value, so the bar is fully transparent and content shows through.
+The mobile tab bar has the same problem (page text is visible behind it).
+Fix: define the token colours so the alpha modifier works (store each token as space-
+separated RGB channels, e.g. --bg: 14 14 12, and map Tailwind colours to
+`rgb(var(--bg) / <alpha-value>)`), keeping both themes' values identical. Then grep for
+any other `/<number>` opacity modifiers on token colours and confirm they render.
+Lint + typecheck, two-line report.

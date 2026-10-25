@@ -1,0 +1,18 @@
+Turn 8c - add light mode. Spec: context/DESIGN.md section 1b (read it). Quick preset,
+frontend only.
+
+1. Add the light token set under `:root[data-theme="light"]` and keep dark as the default
+   values; add `--accent-text` and use it everywhere the accent is used as text or icon
+   colour (links, active nav underline text, small accent labels) instead of --accent.
+2. Theme state: System / Light / Dark, stored in localStorage `gavel-theme` (try/catch
+   around every access), System follows prefers-color-scheme live. Inline script in
+   index.html sets data-theme before React mounts so there is no flash.
+3. Toggle: segmented control (Monitor / Sun / Moon Phosphor icons + sr-only labels) in the
+   desktop nav before the wallet button; on mobile a "Display" row at the bottom of /me.
+   Not a sun/moon switch.
+4. Audit every component for hard-coded colours (hex, rgb, white/black Tailwind classes,
+   inline styles) and move them to tokens so both modes work. ConnectKit: set its theme
+   to follow ours.
+5. Check contrast in light mode: ink-2 and ink-3 on bg and surface, accent-ink on accent
+   buttons, the clock, tags. Fix anything under WCAG AA.
+Run lint + typecheck and report briefly, including any colour you had to adjust.

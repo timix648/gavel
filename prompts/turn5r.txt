@@ -1,0 +1,12 @@
+The last turn hit the watchdog timeout before you reported. Do NOT build anything new.
+Quick preset. Just report, concisely:
+1. STEP 0 findings: does Memo exist on testnet and what is its real interface? Does the
+   ERC-8004 ReputationRegistry exist on testnet AND mainnet (5042)? Which IdentityRegistry
+   did you use, and what did you change from my spec because of what you found?
+2. Run `forge test` now and paste the final summary lines (pass/fail counts) plus any
+   failing test names.
+3. Deployed addresses on Arc testnet for AuctionHouse v4, ReputationWriter, GavelLot,
+   LotVault, and the deploy block. Confirm src/chain.ts matches.
+4. The live tx hashes from the flow test (list, bid, settle, confirmDelivery, recordSale),
+   and state plainly whether settle went THROUGH the Memo contract or was a plain settle().
+5. Anything left unfinished or known broken.

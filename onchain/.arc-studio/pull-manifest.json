@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "entries": {
+    "contracts/AuctionHouse.sol": {
+      "hash": "5ac9a9ac3fa37be81140e3181051204e5cb9a12626e6f11fc49fd0825cd1253b",
+      "pulledAt": "2026-10-23T09:46:16.785Z"
+    },
+    "contracts/GavelLot.sol": {
+      "hash": "fe0b7570db679fce359535c3b2fdea949f236a0b5da2379fe689c24506b308a5",
+      "pulledAt": "2026-10-17T17:40:00.117Z"
+    },
+    "contracts/LotVault.sol": {
+      "hash": "479daff5cc7a807cf52b8666d9b18b2aa63364a03e61105968567182d8e771fb",
+      "pulledAt": "2026-10-17T17:40:00.128Z"
+    },
+    "foundry.toml": {
+      "hash": "844f02046852d7276bc1b63c239ebe9717dd5625812dab657fa91e3f0d00197e",
+      "pulledAt": "2026-10-22T12:15:15.079Z"
+    },
+    "remappings.txt": {
+      "hash": "7db29ab99ec9f13cfd2dc2c9c746f77e57f85c17c6186a15204e1dfdcfadd29c",
+      "pulledAt": "2026-10-17T17:48:57.915Z"
+    },
+    "contracts/test-helpers/MockUSDC.sol": {
+      "hash": "29136fc04ad2151bcc29d431b7b094f2f65f663c34e25ccab3d2f67858721298",
+      "pulledAt": "2026-10-23T09:58:44.576Z"
+    },
+    "contracts/test/.gitkeep": {
+      "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "pulledAt": "2026-10-17T17:48:57.926Z"
+    },
+    "contracts/test/AuctionHouse.t.sol": {
+      "hash": "20a382d8cb35769f3a33cc2bafa5a4c5a3b94b1b53096e366a2ab825e183d44c",
+      "pulledAt": "2026-10-23T09:58:44.578Z"
+    },
+    "relayer/README.md": {
+      "hash": "d61e5dc13e364e6413c8bdcf90301e2fbfc86b451b065425c09936497ff58cfd",
+      "pulledAt": "2026-10-21T23:58:02.171Z"
+    },
+    "relayer/index.ts": {
+      "hash": "475d1d6796c8dc88cd5c20465757eec09462d5bdbd7b2b16e03e88e78c133a13",
+      "pulledAt": "2026-10-21T23:58:02.172Z"
+    },
+    "contracts/ReputationWriter.sol": {
+      "hash": "6bd4cf54914bfb1a9b04c5bdc16a37c4c13e0b77b4cbdec902b73757a97ba4bb",
+      "pulledAt": "2026-10-22T12:15:15.090Z"
+    },
+    "contracts/test-helpers/MockIdentityRegistry.sol": {
+      "hash": "b27adcfeedc18b61c43842cbbc5dfc1073f7bbb1e52f4eb75f7c30ec72f82d74",
+      "pulledAt": "2026-10-22T12:15:15.091Z"
+    },
+    "contracts/test-helpers/MockReputationRegistry.sol": {
+      "hash": "d7cb5cadc7ce58ee7b86ca17f4888500ae6c1f67c8060e9a8c7e93524259b15d",
+      "pulledAt": "2026-10-22T12:15:15.092Z"
+    },
+    "contracts/test-helpers/MockReputationWriter.sol": {
+      "hash": "f6f0392807bd640b1e1d2e1a6450a25e1a53230ef65dc0d7c55f212111bd2206",
+      "pulledAt": "2026-10-22T12:15:15.093Z"
+    }
+  }
+}

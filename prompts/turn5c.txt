@@ -1,0 +1,20 @@
+Resume the one-signature gasless change. The previous turn stopped on the daily usage
+limit right after both reviewers ran on the new single-signature bidWithAuthorization.
+Balanced preset. Keep this turn focused - do not start anything else.
+
+1. If either reviewer reported a Critical/High on the single-signature contract, fix it.
+2. Update contracts/test/AuctionHouse.t.sol: replace the two-signature relayed-bid tests
+   with: happy path with ONE signature; relayer resubmits with a different lotId -> revert;
+   different amount -> revert; same signature twice -> revert; signature built for another
+   contract address -> revert; expired validBefore -> revert; soft close via relayed bid;
+   outbid refund goes to the signer; RelayedBid event. MockUSDC must enforce the
+   receiveWithAuthorization nonce exactly like real USDC. Keep every other test passing.
+   Run forge test and paste the summary line.
+3. Frontend: one signTypedData (ReceiveWithAuthorization with nonce =
+   keccak256(abi.encode(auctionHouse, chainId, lotId, amount, salt)), random salt).
+   Relayer: accept {lotId, amount, from, validAfter, validBefore, salt, sig}, recompute
+   the nonce, validate, submit.
+4. Redeploy AuctionHouse v5 + ReputationWriter wiring as before, update src/chain.ts
+   (address + DEPLOY_BLOCK), restart the relayer, and do one live gasless bid with exactly
+   ONE signTypedData call. Print the tx hash.
+5. Update AGENTS.md with current addresses. Report briefly.

@@ -1,0 +1,25 @@
+Turn 14 - lobby data bugs seen in a real browser. Quick preset, src/pages/Lobby.tsx
+and src/chain.ts only.
+
+Symptoms (user on Chrome, 1920 px): the "Recently ended" list appears, pushing the page
+down, then disappears again and the page shows "No live auction right now" while the
+keeper's lot #31 WAS live on chain; the house panel says "Next lot starts soon".
+
+Causes I found reading the code:
+1. loadLots() returns early unless nextLotId changed (`if (!isFirstLoad && !countChanged
+   && lots.length > 0) return`). So bids, extensions, settlement and live/ended status of
+   the lots on screen go stale. Fix: refresh the window's lot STATE every new block with
+   the single lots() multicall (it is one RPC call); only the tokenURI batch should depend
+   on new lots (titles are cached forever).
+2. Never replace good data with worse data: if a refresh fails, or returns fewer lots
+   than the window because some calls failed, keep the previous entries for the missing
+   ids. Only call setLots with a merged result. Never show the empty state unless the
+   last SUCCESSFUL read had zero live lots.
+3. Remove layout shift: reserve the height of the live-lots area and the ended list
+   while loading (skeletons with the final dimensions), so the page never jumps.
+4. HOUSE_WALLET defaults to '' so the house panel never finds the house lot unless
+   VITE_HOUSE_WALLET is set. Make it a list in src/chain.ts (HOUSE_WALLETS) with both
+   testnet house addresses: 0x670BFFCd9091B0Cf42d3F41C23a5BE921D8f80c3 (your sandbox
+   keeper) and 0x4467AF4755FB427F60667aD6baDD174999e391B6 (my local keeper), still
+   overridable by VITE_HOUSE_WALLET (comma-separated).
+Lint + typecheck, two-line report.

@@ -1,0 +1,46 @@
+Turn 12 - proper browser-wallet connect + RPC load fixes. Balanced preset. Frontend and
+keeper only; no contract changes.
+
+A. WALLET CONNECT UX (my review of the ConnectKit modal in a browser)
+The ConnectKit modal shows MetaMask, Coinbase, "Other Wallets" (which jumps straight to a
+WalletConnect QR on desktop) and an unwanted "Continue with Aave" (Family) option. On
+desktop, users expect every wallet EXTENSION installed in their browser listed by name
+and connecting in one click, like Uniswap/Aave/OpenSea. QR only for phone-only wallets.
+1. Replace ConnectKit with RainbowKit (@rainbow-me/rainbowkit, latest v2 compatible with
+   our wagmi v2 + viem v2). Use getDefaultConfig with:
+   appName "Gavel", projectId = WALLETCONNECT_PROJECT_ID from src/chain.ts,
+   chains: [CHAIN] ONLY (remove Ethereum mainnet - ENS is not used anywhere in src/).
+   Wallet groups via connectorsForWallets:
+     "Installed / Recommended": injectedWallet, metaMaskWallet, rabbyWallet, okxWallet,
+       coinbaseWallet, braveWallet, trustWallet, phantomWallet, zerionWallet, rainbowWallet
+     "Other": walletConnectWallet
+   Keep EIP-6963 multi-injected discovery ON so any other installed extension (e.g.
+   Backpack, Bitget) also appears by name under Installed.
+2. Remove connectkit from package.json and every import; replace ConnectKitButton with
+   RainbowKit's ConnectButton.Custom rendered in OUR button styles (desktop nav and mobile
+   bar): disconnected = "Connect wallet"; wrong network = "Switch to Arc" in --warn;
+   connected = short address in Geist Mono + USDC balance.
+3. Theme: RainbowKit darkTheme/lightTheme bound to our resolved theme, accentColor =
+   --accent, accentColorForeground = --accent-ink, borderRadius 'medium', fontStack
+   'system' overridden to our Geist Sans via CSS.
+4. App metadata icon: there is no /favicon.ico. Create public/favicon.svg from the
+   Phosphor Gavel icon (orange on --bg, rounded square), use it in index.html AND as the
+   RainbowKit/WalletConnect app icon. Remove the emoji-based SVG favicon.
+5. Keep "Add Arc" for wallets that do not know the chain; RainbowKit's chain switch must
+   call wallet_addEthereumChain with values from src/chain.ts.
+
+B. RPC LOAD (the public RPC rate-limited my IP while the keeper and one browser tab ran)
+6. keeper/index.ts scans lots 0..nextLotId-1 every 20 s cycle, so reads grow forever.
+   Track state instead: remember the ids of house lots that are not yet fully done
+   (unsettled, or settled with bond not yet released) in memory; on start, rebuild that
+   set ONCE from Listed events for the house address (logs, chunked, with the same
+   backoff). Each cycle only read those lots plus nextLotId. Cycle every 15 s is fine.
+7. Lobby.tsx loops over every lot each refresh. Read only the newest 24 lots for the
+   lobby (nextLotId-24 .. nextLotId-1) using one multicall (viem client.multicall, or
+   Arc's Multicall3 if present - check), and cache tokenURI titles per tokenId forever
+   (they never change). "Show all ended" links to /proof for history.
+8. Me.tsx and AuctionRoom: cache tokenURI per tokenId; batch reads with multicall where
+   several reads happen together.
+
+Run lint + typecheck. Report the wallet list exactly as RainbowKit renders it and the
+number of RPC calls per keeper cycle and per lobby refresh before vs after.

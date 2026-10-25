@@ -1,0 +1,49 @@
+Two parts this turn. Balanced preset.
+
+PART A - corrections to AuctionHouse:
+1. Remove the MIN_INCREMENT and SELLER_BOND constants. Make both per-lot:
+   list(lotURI, reserve, durationSecs, minIncrement). minIncrement must be > 0 and
+   <= 1 USDC (very small lots must work: a 0.10 USDC reserve with a 0.05 USDC
+   increment). Bond is per-lot too: bond = reserve (100% of reserve in v1),
+   stored on the Lot. Keep the 5 USDC reserve cap.
+2. Do NOT release the bond at settlement. On Hammer, hold the bond. Add:
+   - confirmDelivery(lotId): callable only by the winner; releases the bond to the
+     seller's claimable.
+   - releaseBondAfterTimeout(lotId): anyone, after settledAt + 7 days with no dispute;
+     releases the bond to the seller.
+   - dispute(lotId): winner only, before the 7-day timeout; marks the lot disputed.
+   - resolveDispute(lotId, bool sellerAtFault): owner only; if sellerAtFault the bond goes
+     to the winner's claimable, else to the seller's.
+   Unsold and cancelled lots still return the bond immediately.
+   Emit BondHeld, BondReleased, Disputed, DisputeResolved.
+3. Remove the redundant double reserve check in bid(). First bid: amount >= reserve.
+   Later bids: amount >= highestBid + minIncrement.
+Keep everything from Turn 1: pull payments, CEI ordering, nonReentrant, pause never
+blocking settle/claim/bond release, renounceOwnership disabled.
+
+PART B - Foundry tests in contracts/test/AuctionHouse.t.sol. Use a mock 6-decimal ERC20
+etched at 0x3600000000000000000000000000000000000000 with vm.etch. Cover:
+ 1 happy path: list, three bids, settle; winner holds the lot NFT, seller credited
+ 2 a bid at 3 seconds remaining extends the deadline to now+10
+ 3 MAX_EXTENSIONS caps extensions and the auction does end
+ 4 twenty consecutive late bids extend correctly and settle cleanly
+ 5 bid below increment reverts; first bid below reserve reverts
+ 6 bid after deadline reverts
+ 7 previous bidder's claimable rises in the same tx as the outbid
+ 8 a bidder who cannot receive USDC (blocklist simulated by a mock that reverts transfers
+   to one address) cannot block other bidders' claims or settlement
+ 9 settle with no bids returns the lot and bond to the seller
+10 double settle reverts
+11 atomicity: lot transfer and payment credit happen in the same settle tx
+12 0.10 USDC reserve with 0.05 increment works end to end
+13 bond held after hammer; confirmDelivery releases it; releaseBondAfterTimeout after
+   7 days releases it; before 7 days reverts
+14 dispute + resolveDispute(true) sends bond to winner; (false) to seller
+15 6-decimal accounting: total USDC held by the contract always equals the sum of
+   claimable + active highest bids + held bonds (no dust stranded) after a mixed sequence
+16 reentrancy on claim with a malicious token callback cannot drain
+17 pause: list and bid revert; settle, claim and bond release still work
+18 cancel only with no bids
+Run forge test -vv and show the full output. Fix any failures in the CONTRACT if the
+test reveals a real bug, in the TEST only if the test itself is wrong, and tell me which.
+Redeploy AuctionHouse to Arc testnet after all tests pass.

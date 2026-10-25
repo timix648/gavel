@@ -1,0 +1,9 @@
+Quick preset, one small change. I computed the WCAG ratios with the standard relative-
+luminance formula:
+- #B53C0A on #F3F3F0 = 5.22:1 and on #FBFBF9 = 5.61:1 (both pass; your 3.2:1 figure for
+  the surface was off, no change needed there).
+- #FFFFFF on #E8551E = 3.65:1 (fails AA for button text, as you flagged).
+- #140A04 on #E8551E = 5.35:1 (passes).
+Fix: in the light theme set --accent-ink to #140A04 (same dark ink as dark mode) and keep
+--accent at #E8551E. Check no button or tag hard-codes white text on the accent. Run lint
++ typecheck, report in two lines.

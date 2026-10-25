@@ -1,0 +1,21 @@
+Turn 11 - full EVM wallet list in the connect modal. Quick preset, frontend only.
+
+Today src/config.ts uses createConfig with connectors: [injected()] only, so ConnectKit's
+modal lists just the extensions already installed. Switch to ConnectKit's
+getDefaultConfig so the modal shows the standard wallet list (MetaMask, Coinbase Wallet,
+Rainbow, Trust, OKX, Rabby, plus "Other wallets" via WalletConnect QR / mobile deep links).
+
+- WalletConnect project ID: 35feb36938c720a01f77006e662bcf8a (public, not a secret). Put it
+  in src/chain.ts as WALLETCONNECT_PROJECT_ID, overridable by VITE_WALLETCONNECT_PROJECT_ID.
+- appName "Gavel", appDescription "Live USDC auctions on Arc", appUrl from
+  window.location.origin, appIcon the gavel favicon.
+- Chains: Arc (from src/chain.ts) as the only chain users can connect to. Keep Ethereum
+  mainnet in transports ONLY if ENS lookup needs it, but do not offer it in the modal's
+  chain list (initialChainId = Arc). If a wallet connects on another chain, the existing
+  "Add Arc" / switch-network flow must prompt them.
+- Keep EIP-6963 discovery so every installed extension still appears by name.
+- Coinbase Wallet: preference "all" is fine. The settle-through-Memo path must keep
+  falling back to a plain settle() for smart wallets (it already checks; confirm).
+- ConnectKit theme must follow our tokens in BOTH light and dark mode (customTheme with
+  the CSS variables, mode bound to our theme state), radius 16 to match panels.
+Lint + typecheck. Report briefly, including the exact list of wallets the modal shows.

@@ -1,0 +1,28 @@
+Turn 8b - fixes from my browser review of the redesign (1280 px and 375 px). Quick
+preset, frontend only, keep everything else as is.
+
+1. MOBILE ORDER on /lot/:id: at < 768 px the auction panel (clock, bid, Bid button) must
+   come directly after the title/seller, BEFORE the image and bid history. It is the
+   primary action; right now a phone user has to scroll past the image to find it.
+2. The fixed "Built with Arc Studio" badge (position: fixed bottom-right, inline styles,
+   light blue) covers the mobile tab bar's Me and Proof items and breaks the one-accent
+   rule. Remove the fixed badge. Put "Built with Arc Studio" as a small text link in a
+   footer on desktop and at the end of the page content on mobile, styled with tokens
+   (--ink-3, accent on hover). No inline styles.
+3. Fonts: Geist Sans 700 is not imported (headings are being faux-bolded). Import the 700
+   weight. Also the CSS font-family lists "Geist" first but the loaded family is
+   "Geist Sans" - put the correct loaded family name first.
+4. /lot/:id panel shows the reserve twice ("Reserve $0.10" as the big figure AND again in
+   the small line). When there are no bids, show the big figure labelled "Reserve" and
+   only "Min step $0.05" in the small line.
+5. Lobby with no live lot: there is a large empty vertical gap between the hero and the
+   "No live auction right now" state. Tighten it: the empty state sits directly under the
+   hero with normal section spacing, and the hero's house-lot panel shows the most recent
+   settled house lot ("Last sold: UI wireframe, no bids") instead of only "Next house lot
+   starts in a moment".
+6. Lot image: when lotURI has no image, do not use a random picsum photo (a random photo
+   for "Logo sketch" is misleading). Show a composed placeholder panel instead: the lot
+   title large in --ink-3 on --surface with the Phosphor Gavel icon. Use the image field
+   from data:application/json lotURIs when present.
+7. Per-digit roll for the current bid is optional; leave the fade-up.
+Run lint + typecheck and report briefly.

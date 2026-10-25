@@ -1,0 +1,20 @@
+Turn 8 - full visual redesign of the frontend from the attached spec,
+context/DESIGN.md. Read it fully before changing anything.
+
+Scope: frontend only (src/, index.html, tailwind config, index.css, package.json for the
+new font and icon packages). Do NOT touch contracts, relayer, keeper, chain logic, data
+hooks (logStore, useLogs, useLot, useBlock) or any contract calls - restyle and recompose
+around them. Preserve every route and every feature listed in section 7 of the spec.
+
+Work in this order and keep each step compiling:
+1. Tokens, fonts (install @fontsource/geist-sans and @fontsource/geist-mono), Phosphor
+   icons (install @phosphor-icons/react, remove lucide-react), grain overlay, radius rule,
+   NETWORK_LABEL in src/chain.ts.
+2. Layout shell: nav, mobile tab bar, container, skip link, 404.
+3. Lot page (the signature screen) including the four motion moments.
+4. Lobby with the live house-lot panel hero.
+5. Create, Me, Proof.
+6. Loading skeletons, empty and error states.
+
+Then run lint + typecheck, fix everything, and report: files changed, any spec item you
+could not do and why. Keep the report short.

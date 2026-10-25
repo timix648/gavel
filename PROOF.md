@@ -1,0 +1,149 @@
+# Gavel - proof of what runs on chain
+
+Every hash below was checked independently with `arc-cast receipt <hash> status`
+(Arc Foundry), not taken from Studio's output. The live /proof page reads the same events
+straight from chain.
+
+## Arc mainnet (chain 5042)
+
+_To be filled after the mainnet deploy._
+
+| Contract | Address | Deploy tx |
+|---|---|---|
+| AuctionHouse | | |
+| ReputationWriter | | |
+| GavelLot | | |
+| LotVault | | |
+
+Transaction count, distinct wallets and USDC moved: see the live /proof page and the
+table that will go here.
+
+Funding disclosure: _list any participants funded to remove the onboarding barrier, e.g.
+"N participants were sent 1 USDC on Arc; all bids were their own decisions."_
+
+## Arc testnet (chain 5042002) - development history
+
+### Contract versions
+| Version | AuctionHouse | Deploy block | What changed |
+|---|---|---|---|
+| v1 | `0x48a6042850d4b82be7a9a4d6aefd9b62b276ca5f` | - | Core auction |
+| v2 | `0x58a0d1f5426e5ed1e47db45e3eec1e73179dc2f3` | 67707191 | Per-lot increment/bond, held bond, disputes |
+| v3 | `0xd852f946ce33d314ebecf6b3465376c8cc8768b1` | 68429852 | Gasless bidding (two signatures) |
+| v4 | `0x64e7fea4f62dcd87739177f976c43841c678ad20` | 68433448 | ERC-8004 reputation, reputation-sized bonds |
+| v5 | `0x6280bf11fd8fcdf63a2493fdf893b326fb06478f` | 68670003 | Gasless bidding with one signature (current) |
+
+ReputationWriter v2 (wired to v5): `0x5898b97d94afab5c47fd29f468bc269f03e52dad`
+
+### Full auction with soft close (v2, 22 Oct)
+| Step | Tx | Block |
+|---|---|---|
+| list 0.10 reserve / 0.05 step | `0xf69f1dfedb1decbfa029e23d872d6b14aff902c838199d9a33f56119473577e3` | 68425249 |
+| bid 0.10 | `0x485b1ef9d14248fe94e54a4dc352bc91929832c4ee7fa9dea4970f747dd585db` | 68425263 |
+| bid 0.15 (outbid) | `0xafebbb4d45359ecf1ae1cb937c992f3999e4bc0242a675e74fb44a0369bbc279` | 68425277 |
+| bid 0.20 in final 10 s (Extended) | `0x8b5daf73d69c5b1ca21835630a70506119d43804063c616d5f1989a464ec4bfa` | 68425474 |
+| settle (Hammer) | `0x8b1b3c59feab0cf1a7ca771083f6918b60ae8efcfa0ec020175d8531f0297950` | 68425503 |
+| claim outbid refund | `0xd52ade2e62a2a5819a5fd94a9c26284f38923e5459eb1cb9e388a082ae26bf0d` | 68425515 |
+
+Event check over blocks 68425249-68425515 with `cast logs`: Listed 1, Bid 3, Outbid 2,
+Extended 1, Hammer 1, BondHeld 1, Claimed 1.
+
+### Gasless bidding
+| What | Tx | tx.from |
+|---|---|---|
+| Two-signature relayed bid (v3) | `0xf770305630b623c950227e1d5087ea0a3f1eefc11be599aecdabaf64f6f8b0b8` | relayer `0xca79D9B8…84Af` |
+| One-signature relayed bid (v5) | `0xde257a84dffe8f2c49bc5866b923bc04d254e24fb80279929b03d90268f9ea15` | relayer `0xca79D9B8…84Af` |
+
+In the v5 bid the bidder (`0x6C64C5aA…85db`) never held gas and signed once; its balance
+dropped by exactly the 0.10 bid.
+
+### Reputation and delivery (v4)
+| Step | Tx |
+|---|---|
+| settle | `0x921d8380d85f2300c343b75515534285e4ee88947547daa5ab1970ef29986589` |
+| confirmDelivery | `0xf44bed1f99f4b2a7b02b382d16048a5e20925b38b4e9447a0a8f07ea286a3ca3` |
+| recordSale (ERC-8004 feedback) | `0x5cbe405e74dfbcd31d67391fc1ef0d17ac218fdd3f96ae961decc3d32f2786dd` |
+
+### House auction keeper (v5)
+| Step | Tx |
+|---|---|
+| list lot #1 "30-min code review" | `0xe446172d205dcbdaec6afc87fb5c6ded024347a0e2894ff34b1e99c226505412` |
+| settle lot #1 | `0xf5a33d9d430f424c3b7e00dd24d649037003dcba67d251476f2ca51af87b7b8f` |
+| list lot #2 "Logo sketch" | `0x9abb38154e68aa62861d6ec49c5278278f9a9b5ddba718271d96370cdc3b8b44` |
+
+### Full-stack end-to-end run (v5, 24 Oct)
+Relayer and keeper running on my own machine (not Studio's sandbox), four fresh testnet
+wallets, scripted auction on the keeper's lot #16. All receipts `status = true`.
+
+| Step | From | Tx |
+|---|---|---|
+| A bids 0.10 (with gas) | bidder A `0xBafE…4688` | `0xfa384b9b6fe4d841397cd0ea767059287c5048175c6bd7afadf14f85d0366625` |
+| B bids 0.15 (gasless, one signature) | relayer `0x7118…D808` | `0xd89042f7cef7361a632d10d8357d000ac69ba2cdd96a512b3cf44da6d8f4d9a5` |
+| A bids 0.20 in last 10 s (deadline 1792835646 -> 1792835649) | bidder A | `0x61e27449f14ff21efb0caa8e17e098bce583d1c1ee1be5299081cbf793b8a8d0` |
+| settle | bidder A | `0x64810a9dcfeac6bbf090d76606d3c0fb8162e6629e92aa4597b8819570f4b652` |
+| B claims 0.15 refund | bidder B `0x5DFE…6F97` | `0x4661baff2319cc32520710a324907a8e5dfea22c4c9a6a0031d994034bcbe701` |
+| A confirms delivery (bond released) | bidder A | `0xa43149bcbda7dbd7ac5afa8b983c695f0c232b9c57628337195592a309e2eb90` |
+
+Bidder B sent zero transactions. Relayer cost for 3 relayed bids: 0.008 USDC
+(balance 20.000000 -> 19.992008).
+
+## Tests
+33 Foundry tests, re-run outside Arc Studio with Arc Foundry (`arc-forge test`, forge
+1.7.1): **33 passed, 0 failed.** Covers soft-close extension and termination, settlement
+atomicity, pull-payment safety against a blocklisted address, 6-decimal accounting with
+no stranded dust, reentrancy, pause, bond lifecycle and disputes, gasless bids with real
+EIP-3009 signatures (wrong lot / amount / contract / replay / expiry all revert), and
+reputation recording.
+
+## Not yet exercised live
+- Settle through Arc's Memo contract (needs a plain browser wallet; to be done on mainnet).
+- Seller registration with the ERC-8004 IdentityRegistry.
+
+## AuctionHouse v6 (testnet, 24 Oct 2026): audit fixes live
+AuctionHouse v6 `0xa1C6274453AA11122F5d69585e77D162A993c1D4` (block 68884570, deploy tx 0xa91cd0b74360dea22e801b851a778882ae5bf57ef1247f3fd4693f1503b1f016), ReputationWriter v3 `0x729dae8ee6B9E530db612E695a8CE7009D5AEe10`, GavelLot `0xEceEE124478972315798E2053F908eeBbd21D1be`. Owner: house wallet (testnet only). Fixes: see AUDIT.md.
+
+End-to-end on v6, lot #1 (test wallets funded by us):
+| Step | Tx |
+|---|---|
+| A bids 0.10 (gas) | 0x05d579414706caf805905777bbee76c94723f29a3a3b916c1687bea2612e591d |
+| B bids 0.15 (gasless, sent by relayer) | 0xb8473c5a094637052af06eda17b2eb1f15d42351114bc3cff97aaaea63273da1 |
+| A bids 0.20 in last 10 s (soft close +4 s) | 0xde203b7ac27dd01b7eb290bbfe0489a40ecc9f01d7ec9c3a2ca11d43e8882874 |
+| settle | 0x36fb260fe05fd02722530146865add194b2275497e936f89a65a2ab5aa31e12c |
+| B claims 0.15 refund | 0xcf772a693a50de16dc7e354cde756d129f78030e622c8367d614a9159bbe0117 |
+| A confirms delivery | 0xb9d84115ca671b3d6844671bb6aec2e53cad1048790586ba5f91921bc21ee3d3 |
+
+## AuctionHouse v6 deployed BY ARC STUDIO (turn 21, 25 Oct 2026), replaces the hand-deployed v6 above
+AuctionHouse `0x4ca018cd8d40159183d32c35b2072e90ef3903a6` (block 69022491, tx 0x571b156ab4d6508870174f365cce715f4a9c39d3d3f47fbdfd7ffc62103625ef, owner = Studio deployer 0x5B12…Ef42), GavelLot `0x7059A13a0771337232B24EBBD2Eb9AC1fDE0B3B7`, LotVault `0x3cbde21d88B5067d8790279df81c6a6E00C4c32c`, ReputationWriter v3 `0x6418acb3f652aa5a6f89cc519e7ad3bf4820698c`. Checked on-chain: receipt status true, seller-bid revert string present in bytecode, reputationWriter unset.
+
+Live check: a seller bid simulated on house lot #0 reverts with "AuctionHouse: seller cannot bid".
+
+End-to-end on Studio v6, lot #1 (test wallets funded by us):
+| Step | Tx |
+|---|---|
+| A bids 0.10 (gas) | 0xcecfe79e98dad6035d83da1ea02d369599105e943cf7a6b1c1e6e58909cf75eb |
+| B bids 0.15 (gasless, sent by relayer) | 0xdab94dff0721783eae27987f8e148cce48444b4f1f6491c11014624671713363 |
+| A bids 0.20 in last 10 s (soft close) | 0xefc37793beab23725ba5e086f0d17cb8be5ab02f2d722a629449f2100696b3f0 |
+| settle | 0x5f93b7c75eb0af22abe82e33d1020aac3bf727c856841c10dcee5339bc79b97e |
+| B claims 0.15 refund | 0xdc74682e7508bd5553afa9c418dcad1c535e926789c9a09977efa51e9f03d846 |
+| A confirms delivery | 0xa7975e0b66c2afff85655d0171799990acb964f39cce10808d2a94e12258f9c3 |
+
+# ARC MAINNET (chain 5042)
+
+Deployed 25 Oct 2026 with arc-forge from the owner's wallet (Studio deploys to testnet only). It is the same source Studio tested in turn 21 (37/37), and the deploy script re-ran all 37 tests before deploying.
+
+| Contract | Address |
+|---|---|
+| AuctionHouse | `0x24D890c1285D481cB6B8761318A8250C922956dd` (block 27790604, tx 0xa17499eaed3ccc04ecb6a6939d9d8b8ec1f90a1e8de1ccd3fb44d0662861d7b2) |
+| GavelLot (NFT) | `0x5f1a8677d47d39D28C75936574B3529686Bb9121` |
+| LotVault | `0xeD8a17B1e9aF7cA83d501248985A2d8FfC575A2F` |
+| ReputationWriter | `0x8865A988DD9ff40a55590C7ce136512bC6A2E1CD` (tx 0xc64d48e7e148f8b1c3089012a6e6c0fb3b7c10aad22e87ad24ef96496a67c419) |
+| Owner | `0xBa6A590E4215CDE9448cd01A0B86531476E4dA0F` |
+
+Verified on mainnet:
+- both receipts have status true
+- `usdc()` = 0x3600…0000 (USDC, 6 decimals)
+- the seller-bid guard is present in the bytecode
+- ReputationWriter points to the mainnet ERC-8004 ReputationRegistry 0x8004BAa1…9b63
+
+Deploy gas: 3,276,917 + 793,565, costing about 0.082 USDC in total.
+
+No automated or house lots run on mainnet. Every lot is listed by a real seller.

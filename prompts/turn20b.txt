@@ -1,0 +1,25 @@
+Turn 20b - light mode is broken in the RainbowKit connect modal. Quick preset,
+src/main.tsx (theme binding) and anything it uses.
+
+User screenshot in LIGHT mode: the modal background is our light surface, but the title
+"Connect a Wallet", every wallet name (HashPack, Console Wallet, OKX Wallet, Nightly,
+Browser Wallet, MetaMask, Rabby...), the "Installed / Recommended" group label and "New to
+Ethereum wallets?" are WHITE, i.e. unreadable. Only the accent "Installed" label and
+"Learn More" are visible. So the light theme gets light background tokens but dark-mode
+text tokens.
+
+Fix:
+- Build the RainbowKit theme from lightTheme(...) when our resolved theme is light and
+  darkTheme(...) when dark, then override colors with OUR tokens for that mode:
+  modalBackground = --surface, modalText = --ink, modalTextSecondary = --ink-2,
+  modalTextDim = --ink-3, modalBorder = --line, menuItemBackground = --surface-2,
+  generalBorder = --line, closeButton = --ink-2, closeButtonBackground = --surface-2,
+  accentColor = --accent, accentColorForeground = --accent-ink,
+  connectButtonBackground = --surface, connectButtonText = --ink,
+  profileForeground = --surface, actionButtonSecondaryBackground = --surface-2.
+- Read the token values AFTER data-theme is applied, and recompute when the theme
+  changes (System following the OS too), so switching modes while the modal is open
+  re-themes it.
+- Also check the account modal and chain modal in both modes.
+Then open the modal in light AND dark and confirm every text colour passes 4.5:1
+against its background (list the pairs). Lint + typecheck, short report.

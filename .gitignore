@@ -1,0 +1,18 @@
+local-services/
+.env*
+!.env.example
+*.log
+node_modules/
+turn*-result.json
+turn*-submit.json
+turn*-err.txt
+
+# local / generated
+app/node_modules/
+onchain/lib/
+**/cache/
+onchain/contracts/out/
+*.tmp.sh
+run-turn*.sh
+turn*-run.log
+local-changes.txt

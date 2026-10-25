@@ -1,0 +1,16 @@
+Turn 15 - landing page and better use of wide screens. Spec: context/DESIGN.md
+section 8 (read all of it, plus sections 1-6 for tokens and rules). Frontend only.
+
+Order, keeping the app compiling after each step:
+1. Routing: landing at `/`, current lobby moved to `/lots`; nav + every internal link
+   updated (grep for `to="/"` and navigate('/')). Landing has its own nav variant
+   (logo, How it works, Proof, theme, "Open app"); app pages keep the current nav with
+   the wallet button.
+2. Container width 1360 px and the /lots layout from 8.2 (no hero on /lots; slim
+   house-lot strip; 1-4 column grid; ended list in a right column from xl).
+3. Extract the lot page's auction panel into a reusable component with a `compact`
+   variant, used by the landing hero (8.3.1) and the /lots house strip.
+4. Landing sections 1-8 exactly as specified. Real data only (house lot, log store
+   stats, latest RelayedBid, last 5 market events). No div-built fake screenshots.
+5. Motion per 8.4, reduced-motion safe.
+Then lint + typecheck. Report briefly, including anything in section 8 you could not do.

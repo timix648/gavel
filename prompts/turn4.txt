@@ -1,0 +1,50 @@
+Turn 4 - gasless bidding with EIP-3009. Balanced preset.
+
+STEP 0 - verify before building. On Arc testnet read from the USDC at
+0x3600000000000000000000000000000000000000: name(), version(), DOMAIN_SEPARATOR(), and
+check that receiveWithAuthorization and transferWithAuthorization exist (call with a
+bogus signature and confirm it reverts with a signature error, not a missing-selector
+error). Compute the EIP-712 domain separator from {name, version, chainId 5042002,
+verifyingContract 0x3600...} and confirm it equals DOMAIN_SEPARATOR(). Report the values.
+If EIP-3009 is not supported, stop and tell me.
+
+CONTRACT - add to AuctionHouse:
+  bidWithAuthorization(uint256 lotId, uint256 amount, uint256 validAfter,
+                       uint256 validBefore, bytes32 nonce, uint8 v, bytes32 r, bytes32 s)
+- Callable by anyone (the relayer). The bidder is the signer `from`, never msg.sender.
+- Use USDC.receiveWithAuthorization(from, address(this), amount, validAfter, validBefore,
+  nonce, v, r, s) - NOT transferWithAuthorization - so a front-runner cannot replay the
+  signature to move funds without placing the bid (receiveWithAuthorization requires
+  msg.sender == to).
+- Then run exactly the same bid logic as bid() for `from` (refactor bid() into an
+  internal _bid(bidder, lotId, amount) used by both; keep CEI and nonReentrant).
+- Emit RelayedBid(lotId, bidder, relayer, amount).
+Tests (add to the suite, keep all 18 passing): relayed bid credits the signer as bidder
+and the outbid refund goes to the signer; wrong signer / expired / reused nonce revert;
+a relayed bid inside the last 10 s extends the clock; the relayer's own USDC balance is
+untouched. The MockUSDC needs a minimal EIP-3009 receiveWithAuthorization for the tests.
+Run forge test and show the output.
+
+RELAYER - a small Bun HTTP service in relayer/ (separate from the Vite app):
+- POST /bid {lotId, amount, auth:{from,to,value,validAfter,validBefore,nonce}, sig}
+- Validates: to == AuctionHouse, value == amount, validBefore in the future, amount is
+  the current next valid bid, lot is live. Rejects otherwise with a clear message.
+- Submits bidWithAuthorization from a relayer EOA (key from env RELAYER_PRIVATE_KEY,
+  never logged) with maxFeePerGas >= 20 gwei and maxPriorityFeePerGas 0 (Arc drops
+  transactions below the 20 gwei floor silently), tracks its own nonce, retries once at a
+  higher fee if no receipt in 15 s.
+- Logs gas cost per relayed bid as gasUsed * effectiveGasPrice / 1e12 (USDC, 6 dp) and
+  exposes GET /stats {relayedBids, totalGasUsdc}.
+- Per-address rate limit (5 bids/minute) and a daily spend cap so the float cannot be
+  drained.
+- README section: how to run it, env vars, and hosting options.
+
+FRONTEND - on the Bid button add a "No gas needed" toggle (default on when the wallet's
+USDC balance is tiny or zero gas is available): the user signs the EIP-712
+ReceiveWithAuthorization typed data (domain values from STEP 0, nonce = random bytes32,
+validBefore = now + 120 s) and the app POSTs it to the relayer URL from src/chain.ts.
+Show a "Gasless" badge on relayed bids in the bid history (from RelayedBid events).
+
+Redeploy AuctionHouse v3 to Arc testnet after tests pass, update src/chain.ts (address
+and DEPLOY_BLOCK), run the relayer in the sandbox with a fresh relayer wallet, and do one
+real relayed bid on testnet end to end. Print the tx hash. Report what actually happened.

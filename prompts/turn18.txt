@@ -1,0 +1,49 @@
+Turn 18 - slide transition from the landing page into the app, and an icon cleanup.
+Balanced preset, frontend only.
+
+A. SLIDE TRANSITION (user request: "Open app" / "Bid on a live lot" should behave like a
+   slideshow swiping left to reveal the bid pages)
+1. Use the View Transitions API through React Router (`viewTransition` on the Link /
+   `navigate(to, { viewTransition: true })`, react-router-dom v7). Going FORWARD from
+   the landing page into the app (/ -> /lots or /lot/:id) the whole landing page slides
+   out to the LEFT while the app slides in from the RIGHT, like a slide deck:
+   ::view-transition-old(root) translateX(0 -> -100%) and ::view-transition-new(root)
+   translateX(100% -> 0), 550 ms, cubic-bezier(0.32,0.72,0,1), with a slight opacity dip
+   on the outgoing page. Going BACK to the landing page (logo click, browser back) slides
+   the other way. Set the direction with a data attribute on <html> before starting the
+   transition (e.g. data-nav="forward" | "back") and key the CSS off it.
+2. Keep the header from jumping: give the nav its own view-transition-name so it
+   cross-fades instead of sliding (the landing nav and app nav differ).
+3. Inside the app (between /lots, /lot/:id, /create, /me, /proof) do NOT slide; keep the
+   current instant navigation.
+4. Fallbacks: browsers without document.startViewTransition (Firefox) navigate
+   instantly; prefers-reduced-motion = instant, no slide.
+5. "Bid on a live lot" lands on the live house lot's page directly (/lot/:id) when one
+   exists, else /lots.
+
+B. ICONS (user feedback: the icons look AI-generated). Rule: icons only where they do a
+   job; decorative icons are removed, not swapped. One family, one weight.
+6. Switch every remaining Phosphor icon to weight="light", size 16 or 20 only (one
+   global IconContext.Provider value={{ weight: 'light', size: 20 }}).
+7. REMOVE these decorative icons:
+   - Landing "How a lot moves": Tag, Coin, Clock, Hammer. Replace each step's icon with a
+     REAL VALUE on the step's node, in Geist Mono: List -> "0.10 USDC" reserve, Bid ->
+     "0.15", Last ten seconds -> a tiny live "0:04", Hammer -> "Sold 0.20". The hairline
+     connects the nodes. The step title + sentence stay.
+   - Landing/Lobby "How it works": Scales and the others; plain text, numbers in mono.
+   - LotCard: the Timer next to the countdown (the countdown already reads as time).
+   - Empty states (Lobby, Me, lot placeholder): the Gavel decoration; keep the lot-title
+     placeholder text treatment.
+   - Create: Info, UserPlus, Gavel decorations.
+   - Me: Star on the reputation line.
+   KEEP (functional): theme toggle Monitor/Sun/Moon, ArrowSquareOut on external links,
+   ArrowRight inside the CTA button circle, Lightning on the Gasless badge, Warning /
+   ShieldWarning / CheckCircle on status messages, the mobile tab bar icons (they have
+   labels), the Gavel brand mark in the logo and favicon.
+   Replace Spinner icons in buttons with a text state ("Confirming...") plus the existing
+   skeletons; no spinning icons.
+8. Small fix from my review of Turn 17: right after the Arc extension the lane clock
+   shows 0:09 while the caption says "back to 0:10" - display the countdown rounded UP
+   (Math.ceil) in BlockComparison so the reset reads 0:10.
+Lint + typecheck. Report: the final list of icons still used and where, and which
+browsers get the slide.
