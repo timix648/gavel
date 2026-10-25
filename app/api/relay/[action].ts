@@ -3,7 +3,7 @@
  * rewritten here by vercel.json). Same handler as the local Bun relayer.
  * Needs RELAYER_PRIVATE_KEY set in the Vercel project's environment variables.
  */
-import { handle } from '../../relayer/handler'
+import { handle } from '../../relayer/handler.js'
 
 export const config = { maxDuration: 60 }
 
