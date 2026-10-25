@@ -1,8 +1,15 @@
 {
+  "installCommand": "bun install",
   "buildCommand": "vite build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/relay/:action", "destination": "/api/relay/:action" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    {
+      "source": "/relay/:action",
+      "destination": "/api/relay/:action"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
   ]
 }
