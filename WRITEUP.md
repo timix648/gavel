@@ -1,6 +1,6 @@
 # Gavel: a live USDC auction house on Arc
 
-**Live app:** _link_ · **Arc Studio project:** https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed · **Repo:** _link_ · **Video:** _link_
+**Live app:** https://gavel-alpha.vercel.app · **Arc Studio project:** https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed · **Repo:** https://github.com/timix648/gavel · **Video:** _link_
 
 **AuctionHouse on Arc mainnet:** [`0x24D890c1285D481cB6B8761318A8250C922956dd`](https://explorer.arc.io/address/0x24D890c1285D481cB6B8761318A8250C922956dd)
 **Example mainnet transaction:** _hash from the first live auction_

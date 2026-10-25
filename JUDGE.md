@@ -2,10 +2,10 @@
 
 > **A live auction house where every bid is a USDC transaction on Arc mainnet. Late bids extend the clock; the lot and the payment swap in one transaction.**
 
-Live app: LIVE_URL · Live proof (no wallet): LIVE_URL/proof · Arc Studio project: https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed
+Live app: https://gavel-alpha.vercel.app · Live proof (no wallet): https://gavel-alpha.vercel.app/proof · Arc Studio project: https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed
 
 ## The 60-second path (an Arc wallet with ≥ 0.20 USDC; total spend a few cents)
-1. Open **LIVE_URL/lots** and pick a live lot. If none is live, **Create** one: any title, reserve `0.10`, 10 minutes. You post a 0.10 bond, which comes back to you.
+1. Open **https://gavel-alpha.vercel.app/lots** and pick a live lot. If none is live, **Create** one: any title, reserve `0.10`, 10 minutes. You post a 0.10 bond, which comes back to you.
 2. From another wallet, tap **Bid $X**. Choose **gasless**: you sign one message, send no transaction and pay no gas. The bid appears in the history with a link to explorer.arc.io.
 3. From a third wallet, outbid it. The first bidder sees **You were outbid** and a **Withdraw** button. Their USDC is already claimable, released in the same transaction.
 4. Bid with under 10 seconds left: the clock jumps back to 10.
@@ -34,7 +34,7 @@ Live app: LIVE_URL · Live proof (no wallet): LIVE_URL/proof · Arc Studio proje
 
 ## Reproduce (read-only)
 ```bash
-git clone REPO_URL && cd gavel/onchain && forge test     # 37 tests
+git clone https://github.com/timix648/gavel && cd gavel/onchain && forge test     # 37 tests
 ```
 
 ## Honest limitations
