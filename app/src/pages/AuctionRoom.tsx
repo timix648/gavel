@@ -408,6 +408,14 @@ export default function AuctionRoom() {
   const { isLoading: disputeLoading, isSuccess: disputeOk } = useWaitForTransactionReceipt({ hash: disputeHash })
   useEffect(() => { if (disputeOk) { toast.success('Dispute raised.'); void fetchLot() } }, [disputeOk, fetchLot])
 
+  const { writeContract: resolveTx, data: resolveHash } = useWriteContract()
+  const { isLoading: resolveLoading, isSuccess: resolveOk } = useWaitForTransactionReceipt({ hash: resolveHash })
+  useEffect(() => { if (resolveOk) { toast.success('Dispute resolved. The bond is now claimable.'); void fetchLot() } }, [resolveOk, fetchLot])
+  const [confirmDispute, setConfirmDispute] = useState(false)
+  const { data: houseOwner } = useReadContract({
+    address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'owner', chainId: CHAIN_ID,
+  })
+
   const { writeContract: claimTx, data: claimHash } = useWriteContract()
   const { isLoading: claimLoading, isSuccess: claimOk } = useWaitForTransactionReceipt({ hash: claimHash })
   useEffect(() => { if (claimOk) toast.success('USDC claimed') }, [claimOk])
@@ -447,6 +455,8 @@ export default function AuctionRoom() {
   // earlier outbid bids (or a sale) must never sit there unseen.
   const isOutbid      = !!address && claimableAmt > 0n
   const chainNowSec   = block?.blockTimestamp ? Number(block.blockTimestamp) : Math.floor(Date.now() / 1000)
+  const isHouseOwner  = !!address && typeof houseOwner === 'string' && houseOwner.toLowerCase() === address.toLowerCase()
+  const disputeTimedOut = lot.settledAt > 0n && chainNowSec >= Number(lot.settledAt) + 14 * 86400
   const bondDays      = lot.settledAt > 0n ? Math.max(0, 7 - Math.floor((chainNowSec - Number(lot.settledAt)) / 86400)) : 7
   const isBidBusy     = bidStep !== 'idle'
   const urgent        = isLive && secs < 10
@@ -736,8 +746,8 @@ export default function AuctionRoom() {
                           Confirm delivery
                         </button>
                         <button
-                          onClick={() => void withGas('dispute', { address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'dispute', args: [lotId], chainId: CHAIN_ID }).then(disputeTx).catch(onGasError)}
-                          disabled={disputeLoading}
+                          onClick={() => setConfirmDispute(true)}
+                          disabled={disputeLoading || confirmDispute}
                           className="flex-1 py-2.5 rounded-btn text-sm font-semibold border border-warn text-warn hover:bg-warn/10 active:translate-y-px disabled:opacity-50 flex items-center justify-center gap-1.5"
                         >
                           {disputeLoading ? <Spinner size={13} className="animate-spin" /> : <ShieldWarning size={13} />}
@@ -747,10 +757,64 @@ export default function AuctionRoom() {
                     )}
                   </>
                 )}
+                {/* A dispute freezes the seller's bond, so it is never one click. */}
+                {isWinner && confirmDispute && !lot.bondReleased && !lot.disputed && (
+                  <div className="rounded-btn border border-warn/40 bg-warn/5 p-3 space-y-2">
+                    <p className="text-sm font-semibold text-ink">Open a dispute only if the lot was not delivered.</p>
+                    <p className="text-xs text-ink-2">
+                      The lot NFT and the payment have already changed hands. A dispute freezes the seller's {fmtUsdc(lot.bond)} bond.
+                      The Gavel owner reviews it: if the seller is at fault, the bond comes to you. If nobody resolves it within
+                      14 days of the sale, the bond goes back to the seller.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { setConfirmDispute(false); void withGas('dispute', { address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'dispute', args: [lotId], chainId: CHAIN_ID }).then(disputeTx).catch(onGasError) }}
+                        className="flex-1 py-2 rounded-btn text-sm font-semibold bg-warn text-bg hover:opacity-90"
+                      >
+                        Open dispute
+                      </button>
+                      <button onClick={() => setConfirmDispute(false)} className="flex-1 py-2 rounded-btn text-sm border border-line text-ink-2 hover:text-ink">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {lot.disputed && !lot.bondReleased && (
-                  <p className="flex items-center gap-1.5 text-sm text-warn">
-                    <ShieldWarning size={14} /> Dispute raised, awaiting resolution.
-                  </p>
+                  <div className="space-y-2">
+                    <p className="flex items-center gap-1.5 text-sm text-warn">
+                      <ShieldWarning size={14} /> Dispute raised. The seller's {fmtUsdc(lot.bond)} bond is frozen until it is resolved.
+                    </p>
+                    <p className="text-xs text-ink-3">
+                      The Gavel owner decides. If nobody does within 14 days of the sale, anyone can return the bond to the seller.
+                    </p>
+                    {isHouseOwner && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => void withGas('resolveDispute', { address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'resolveDispute', args: [lotId, true], chainId: CHAIN_ID }).then(resolveTx).catch(onGasError)}
+                          disabled={resolveLoading}
+                          className="flex-1 py-2 rounded-btn text-sm font-semibold border border-warn text-warn hover:bg-warn/10 disabled:opacity-50"
+                        >
+                          Seller at fault: bond to winner
+                        </button>
+                        <button
+                          onClick={() => void withGas('resolveDispute', { address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'resolveDispute', args: [lotId, false], chainId: CHAIN_ID }).then(resolveTx).catch(onGasError)}
+                          disabled={resolveLoading}
+                          className="flex-1 py-2 rounded-btn text-sm font-semibold border border-line text-ink hover:bg-surface-2 disabled:opacity-50"
+                        >
+                          Not at fault: bond to seller
+                        </button>
+                      </div>
+                    )}
+                    {disputeTimedOut && (
+                      <button
+                        onClick={() => void withGas('resolveDisputeTimeout', { address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'resolveDisputeTimeout', args: [lotId], chainId: CHAIN_ID }).then(resolveTx).catch(onGasError)}
+                        disabled={resolveLoading}
+                        className="w-full py-2 rounded-btn text-sm font-semibold border border-line text-ink hover:bg-surface-2 disabled:opacity-50"
+                      >
+                        14 days passed: return bond to seller
+                      </button>
+                    )}
+                  </div>
                 )}
                 {lot.bondReleased && (
                   <div className="space-y-2">

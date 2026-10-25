@@ -102,8 +102,8 @@ export const LOGS_CHUNK_SIZE = 10_000n
 export const LOGS_MIN_INTERVAL_MS = 400
 
 
-/** GitHub repository URL — shown in the lobby footer. Replace with your actual repo. */
-export const GITHUB_URL = 'https://github.com/your-org/gavel'
+/** GitHub repository URL, shown in the landing and lobby footers. */
+export const GITHUB_URL = 'https://github.com/timix648/gavel'
 
 /**
  * WalletConnect project ID — required for ConnectKit's full wallet list.

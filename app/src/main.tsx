@@ -123,7 +123,7 @@ function Root() {
       theme={rbkTheme}
       appInfo={{
         appName: 'Gavel',
-        learnMoreUrl: 'https://github.com/your-org/gavel',
+        learnMoreUrl: 'https://github.com/timix648/gavel',
       }}
       modalSize="compact"
       initialChain={CHAIN_ID}

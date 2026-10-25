@@ -30,6 +30,8 @@ const FALLBACK_GAS = {
   claim:           120_000n,
   confirmDelivery: 100_000n,
   dispute:         120_000n,
+  resolveDispute:  120_000n,
+  resolveDisputeTimeout: 120_000n,
   recordSale:      200_000n,
   register:        300_000n,
   linkSeller:      150_000n,

@@ -147,3 +147,21 @@ Verified on mainnet:
 Deploy gas: 3,276,917 + 793,565, costing about 0.082 USDC in total.
 
 No automated or house lots run on mainnet. Every lot is listed by a real seller.
+
+## First mainnet auction: lot #0 (25 Oct 2026), verified on-chain
+Seller `0xBa6A…dA0F` (the builder) and two bidders, `0x1d94…1038` and `0x5e50…9650`, both wallets of the builder or friends. Reserve 1.00, step 0.25. All 10 transactions have status = true. After the last claim, the AuctionHouse holds 0 USDC.
+
+| Step | From | Tx |
+|---|---|---|
+| list "first auction" (bond 1.00) | seller | [0x870f7888…c978](https://explorer.arc.io/tx/0x870f7888dc370093b5a11244bf65069dcb0966535708cabe0ab9c6e84d61c978) |
+| bid 1.00 | 0x1d94 | [0xf513a819…332b](https://explorer.arc.io/tx/0xf513a81904b9c5c963d0397bb22c583c2cde19051dcc5a2c7d60f0e80984332b) |
+| bid 1.25 (0x1d94 outbid, 1.00 credited) | 0x5e50 | [0xd71d06a4…c3c4](https://explorer.arc.io/tx/0xd71d06a41dafd8d9b25156f59ba6daf9b37a883dd360264d038a34db8e6de3c4) |
+| claim 1.00 | 0x1d94 | [0x883144e1…7f32](https://explorer.arc.io/tx/0x883144e13c8965bdd8aa9946ac3cc57db6c58a38fe70e6ee590bd2f0221f7f32) |
+| bid 1.50 (0x5e50 outbid, 1.25 credited) | 0x1d94 | [0xc752cf91…76b6](https://explorer.arc.io/tx/0xc752cf912df355118512bec601f3a188f5e2581ea852f08dcb4c3506b40d76b6) |
+| claim 1.25 | 0x5e50 | [0x756fcfb7…8b59](https://explorer.arc.io/tx/0x756fcfb7a81dce262b436c0be672cf88a14fa8b100d36f9e66d2a0c3fbc88b59) |
+| settle via Memo: NFT #1 to 0x1d94, 1.50 to seller, in one tx | seller | [0xf20c04af…dd74](https://explorer.arc.io/tx/0xf20c04af874fee8f3e2d2733c2610bf1c192201e652244085f10f76017cedd74) |
+| claim 1.50 (sale proceeds) | seller | [0x829cc973…a0b7](https://explorer.arc.io/tx/0x829cc973d01e515009e7ce0972b12f83d4164b58b0e2880dc3290aa5fd35a0b7) |
+| confirm delivery (bond released) | 0x1d94 | [0x31067b41…13d1](https://explorer.arc.io/tx/0x31067b419ed63814503d8ebadcf00086cebe39c44a6aa9865b4c6d3a284713d1) |
+| claim 1.00 (bond back) | seller | [0xe542ee9e…b6c6](https://explorer.arc.io/tx/0xe542ee9e7327264668feb4380d79bc6854c6f0318d8bf72e4d2205c2f3a4b6c6) |
+
+USDC through the contract: 4.75 in (1.00 bond + 1.00 + 1.25 + 1.50 bids), 4.75 out. NFT #1 is owned by the winner `0x1d94…1038`.
