@@ -541,3 +541,16 @@ Studio deploys to testnet only. The owner ran deploy-mainnet.sh, which used arc-
 ## Turn 22 (25 Oct 2026): Studio repoints the app at mainnet
 Prompt: prompts/turn22.txt. First I uploaded Landing, Lobby, AuctionPanel and chain.ts, which I had edited by hand to remove the automated "house lots": Gavel is seller-run, so every lot comes from a real seller. Studio switched chain.ts, the relayer and the keeper defaults to chain 5042 with the mainnet addresses, fixed a hardcoded testnet explorer link in Landing and "Arc Testnet" copy in Create, and updated the READMEs. Typecheck and lint gave 0 errors.
 What I checked: every address against the deploy output, and the app loading in the browser and reading chain 5042. Afterwards I fixed two leftover empty-state lines by hand ("Next lot starts soon" → "No lot is live right now" plus a "List the first lot" link; the landing CTA reads "Browse lots" when nothing is live).
+
+### Manual fixes 13-15 (outside Studio, 25 Oct 2026)
+13. **Dispute flow.** "Open dispute" now asks for confirmation and explains that it freezes the seller's bond. When a dispute is open, the owner gets "Seller at fault / Not at fault" buttons, and anyone gets the 14-day `resolveDisputeTimeout` button. Before this, a dispute could only be resolved by calling the contract directly.
+14. **Dead GitHub link.** `GITHUB_URL` and RainbowKit's `learnMoreUrl` still pointed at the `your-org/gavel` placeholder. Now `timix648/gavel`.
+15. **Why-Arc animation.** I recorded the animation's on-screen state every 250 ms across the full run, at phone and desktop widths. Problems found:
+   - the two clocks rounded differently, so they were off by a second until the bid;
+   - the 12-second lane was missing its T-8 block;
+   - the first block was half clipped;
+   - lane captions stacked during transitions;
+   - the "Back to 0:10" chip stayed on screen to the end and, on phones, covered the bid dot;
+   - the close line slid backwards on replay.
+
+   All fixed. The chip now sits beside the clock, briefly, and is hidden on phones, where the caption already says it. Re-measured on both widths: clocks agree, 0 clipped tiles, one caption per lane, a steady header, and nothing over the dot.

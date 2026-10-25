@@ -271,9 +271,10 @@ function BlockComparison() {
   const arcSold     = t >= 6.5
 
   // ── 12-s lane block tiles ─────────────────────────────────────────────────
-  // Tile 1 at T-20 (p=0); tile 2 at T+4 (p=24/29) — to the RIGHT of the close line
+  // Blocks every 12 s: T-20, T-8, then T+4, which is after the close line
   const slowTiles: { storySec: number }[] = [
     { storySec: -20 },
+    { storySec:  -8 },
     { storySec:   4 },
   ]
   const closePct12 = toPct(0)   // 12-s close line: fixed at T=0
@@ -370,7 +371,7 @@ function BlockComparison() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono text-ink-3 tracking-wide">12-second blocks</span>
-            <MiniClock secsLeft={slowSecsLeft} flash={slowFlash} />
+            <MiniClock secsLeft={Math.ceil(slowSecsLeft)} flash={slowFlash} />
           </div>
 
           <div className="relative h-10 bg-surface-2 rounded-[6px] overflow-hidden">
@@ -382,7 +383,7 @@ function BlockComparison() {
                 animate={{ scaleY: 1, opacity: 1 }}
                 transition={{ duration: 0.15 }}
                 className="absolute top-1 bottom-1 w-[18px] -ml-[9px] rounded-[3px] bg-line border border-line/60"
-                style={{ left: `${toPct(storySec)}%` }}
+                style={{ left: `clamp(10px, ${toPct(storySec)}%, calc(100% - 10px))` }}
               />
             ))}
 
@@ -421,14 +422,14 @@ function BlockComparison() {
 
           {/* Per-lane captions under the 12-s track */}
           <div className="h-8 flex flex-col justify-center gap-0.5">
-            <AnimatePresence>
+            <AnimatePresence mode="wait" initial={false}>
               {slowClosed && !slowMissed && (
                 <motion.p
                   key="slow-closed"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
+                  transition={{ duration: 0.18 }}
                   className="text-xs text-ink-3"
                 >
                   Closed. The bid is still waiting for a block.
@@ -439,7 +440,8 @@ function BlockComparison() {
                   key="slow-missed"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.18 }}
                   className="text-xs text-ink-3"
                 >
                   Missed. It landed 4 s late.
@@ -452,8 +454,26 @@ function BlockComparison() {
         {/* ── Lane 2: Arc, sub-second blocks ───────────────────────────────── */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-accent-text tracking-wide">Arc, sub-second blocks</span>
-            <MiniClock secsLeft={Math.ceil(arcSecsLeft)} flash={arcFlash} />
+            <span className="text-xs font-mono text-accent-text tracking-wide whitespace-nowrap">Arc, sub-second blocks</span>
+            {/* "Back to 0:10" sits beside the clock it explains, never on the track,
+                so it cannot cover the bid dot or the close line. Hidden on phones,
+                where the caption below already says it and the header has no room. */}
+            <span className="flex items-center gap-2">
+              <AnimatePresence>
+                {arcAccepted && t < 1 && (
+                  <motion.span
+                    key="ext"
+                    initial={{ opacity: 0, x: 6 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, transition: { duration: 0.3 } }}
+                    className="hidden sm:inline text-[10px] font-semibold font-mono text-warn bg-warn/15 px-1.5 py-0.5 rounded-[3px] whitespace-nowrap"
+                  >
+                    Back to 0:10
+                  </motion.span>
+                )}
+              </AnimatePresence>
+              <MiniClock secsLeft={Math.ceil(arcSecsLeft)} flash={arcFlash} />
+            </span>
           </div>
 
           <div className="relative h-10 bg-surface-2 rounded-[6px] overflow-hidden">
@@ -462,34 +482,16 @@ function BlockComparison() {
               <div
                 key={ts}
                 className="absolute top-1.5 bottom-1.5 w-[3px] -ml-[1.5px] rounded-[1px] bg-ink-3/40"
-                style={{ left: `${toPct(ts)}%` }}
+                style={{ left: `clamp(3px, ${toPct(ts)}%, calc(100% - 3px))` }}
               />
             ))}
 
             {/* Close line — jumps to T+6.5 when Arc bid accepted */}
             <div
-              className="absolute top-0 bottom-0 w-px bg-accent/70 transition-all duration-300"
+              className={`absolute top-0 bottom-0 w-px bg-accent/70 ${p > 0 ? 'transition-all duration-300' : ''}`}
               style={{ left: `${arcClosePct}%` }}
             />
 
-            {/* "Back to 0:10" chip, appears when the close line jumps. Motion owns the
-                transform, so positioning uses left/right instead of a translate class:
-                near the right edge the chip sits to the LEFT of the line so it never clips. */}
-            <AnimatePresence>
-              {arcAccepted && (
-                <motion.span
-                  key="ext"
-                  initial={{ opacity: 0, y: -4, scale: 0.85 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  className="absolute top-1 text-[10px] font-semibold font-mono text-warn bg-warn/20 px-1 py-0.5 rounded-[3px] pointer-events-none whitespace-nowrap"
-                  style={arcClosePct > 75
-                    ? { right: `calc(${100 - arcClosePct}% + 4px)`, transformOrigin: 'right center' }
-                    : { left: `calc(${arcClosePct}% + 4px)`, transformOrigin: 'left center' }}
-                >
-                  Back to 0:10
-                </motion.span>
-              )}
-            </AnimatePresence>
 
             {/* Bid dot */}
             {arcBidVisible && (
@@ -507,14 +509,14 @@ function BlockComparison() {
 
           {/* Per-lane captions under Arc track */}
           <div className="h-8 flex flex-col justify-center gap-0.5">
-            <AnimatePresence>
+            <AnimatePresence mode="wait" initial={false}>
               {arcAccepted && !arcSold && (
                 <motion.p
                   key="arc-accepted"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
+                  transition={{ duration: 0.18 }}
                   className="text-xs text-good"
                 >
                   Accepted in 0.5 s. Clock back to 0:10.
@@ -525,7 +527,8 @@ function BlockComparison() {
                   key="arc-sold"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.18 }}
                   className="text-xs text-good"
                 >
                   Sold to the late bidder.
