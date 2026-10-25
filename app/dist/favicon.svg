@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <!-- Rounded square background -->
-  <rect width="32" height="32" rx="8" fill="#0E0E0C"/>
-  <!-- Phosphor Gavel icon, centered, orange -->
-  <g transform="translate(4,4) scale(1.5)">
-    <path fill="#FF6B2C" d="M14.78 11.72 10.53 7.47l1.41-1.41a1 1 0 0 0 0-1.42L8.53 1.23a1 1 0 0 0-1.42 0L5.7 2.64a1 1 0 0 0 0 1.42l3.41 3.41-5.97 5.97a1 1 0 0 0 0 1.42l1.41 1.41a1 1 0 0 0 1.42 0l5.97-5.97 1.41 1.41a1 1 0 0 0 1.42 0l1.41-1.41a1 1 0 0 0 0-1.58ZM2 14h12v1.5a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5V14Z" opacity=".9"/>
-  </g>
-</svg>

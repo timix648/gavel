@@ -16,3 +16,4 @@ onchain/contracts/out/
 run-turn*.sh
 turn*-run.log
 local-changes.txt
+app/dist/
