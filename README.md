@@ -11,12 +11,12 @@ bidder's USDC is released in the same transaction, and at the hammer the lot and
 [![For reviewers](https://img.shields.io/badge/For-reviewers-3ddc84?style=for-the-badge)](JUDGE.md)
 [![Demo video](https://img.shields.io/badge/Demo-video-FF0000?style=for-the-badge)](VIDEO_URL)
 [![Built in Arc Studio](https://img.shields.io/badge/Built_in-Arc_Studio-8b5cf6?style=for-the-badge)](https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed)
-[![AuctionHouse](https://img.shields.io/badge/AuctionHouse-0x24D8...56dd-4ea1ff?style=for-the-badge)](https://explorer.arc.io/address/0x24D890c1285D481cB6B8761318A8250C922956dd)
+[![AuctionHouse](https://img.shields.io/badge/AuctionHouse-0x6102...3A2E-4ea1ff?style=for-the-badge)](https://explorer.arc.io/address/0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E)
 
 ![Arc](https://img.shields.io/badge/Arc-mainnet_5042-4ea1ff?style=flat)
 ![USDC-as-gas](https://img.shields.io/badge/gas-USDC-3ddc84?style=flat)
 ![Solidity](https://img.shields.io/badge/Solidity-0.8.28-363636?style=flat&logo=solidity&logoColor=white)
-![Foundry](https://img.shields.io/badge/Foundry-37_tests-3ddc84?style=flat)
+![Foundry](https://img.shields.io/badge/Foundry-59_tests-3ddc84?style=flat)
 ![Sourcify](https://img.shields.io/badge/Sourcify-4_exact_matches-3ddc84?style=flat)
 ![EIP-3009](https://img.shields.io/badge/gasless-EIP--3009-06b6d4?style=flat)
 ![license](https://img.shields.io/badge/license-MIT-blue?style=flat)
@@ -29,7 +29,7 @@ bidder's USDC is released in the same transaction, and at the hammer the lot and
 
 - **Problem:** online auctions either hand the money to a platform you have to trust, or, on-chain, cannot run a soft close. On a chain with 12-second blocks, a bid made in the last ten seconds lands after the auction has closed, and every bidder needs ETH for gas on top of the USDC they are bidding.
 - **On Arc:** sub-second deterministic finality makes a 10-second soft close real. USDC is the only asset a bidder needs, and with a one-signature gasless bid not even gas. Settlement moves the lot NFT and the payment atomically, so neither side can back out.
-- **Proof:** four contracts on Arc mainnet, all source-verified on Sourcify with exact matches. 37 Foundry tests, Slither, an internal review and an independent Arc Studio review. A bid costs about $0.003 and a gasless bid about $0.004. Every transaction hash is in [PROOF.md](PROOF.md), and the live `/proof` page reads the chain directly, with no wallet.
+- **Proof:** four contracts on Arc mainnet, all source-verified on Sourcify with exact matches. 59 Foundry tests, Slither, an internal review and an independent Arc Studio review. A bid costs about $0.003 and a gasless bid about $0.004. Every transaction hash is in [PROOF.md](PROOF.md), and the live `/proof` page reads the chain directly, with no wallet.
 
 ---
 
@@ -37,6 +37,7 @@ bidder's USDC is released in the same transaction, and at the hammer the lot and
 
 1. [The problem](#the-problem)
 2. [What Gavel does](#what-gavel-does)
+   - [What you can auction (v7)](#what-you-can-auction-v7)
 3. [Why this needs Arc, and only Arc](#why-this-needs-arc-and-only-arc)
 4. [Life of a lot, step by step](#life-of-a-lot-step-by-step)
 5. [Architecture](#architecture)
@@ -49,7 +50,7 @@ bidder's USDC is released in the same transaction, and at the hammer the lot and
 12. [Proof on Arc mainnet](#proof-on-arc-mainnet)
 13. [Measured gas and cost](#measured-gas-and-cost)
 14. [Security](#security)
-15. [Test suite, all 37](#test-suite-all-37)
+15. [Test suite](#test-suite)
 16. [How it was built in Arc Studio](#how-it-was-built-in-arc-studio)
 17. [What we got wrong](#what-we-got-wrong)
 18. [Limitations](#limitations)
@@ -83,15 +84,26 @@ Gavel is a live English auction house where every action is a USDC transaction o
 
 | Who | What happens |
 |---|---|
-| **Seller** | Lists a lot: a title, a reserve price (up to 5 USDC in v1), a minimum bid step (up to 1 USDC), and a duration. Live auctions run 10, 15 or 30 minutes; timed listings run 1 hour, 2 hours, 6 hours, 24 hours, 3 days or 7 days. Listing mints a lot NFT straight into an escrow vault and posts a seller bond equal to the reserve. |
+| **Seller** | Lists a lot: what is being sold (an off-chain item or service, an NFT, an ERC-1155 position or an amount of an ERC-20 token), a reserve price (up to 1,000 USDC), a minimum bid step (any size), and a duration. Live auctions run 10, 15 or 30 minutes; timed listings run 1 hour, 2 hours, 6 hours, 24 hours, 3 days or 7 days. Listing mints a lot NFT straight into an escrow vault and posts a seller bond equal to the reserve. |
 | **Bidder** | Sees one button showing the exact next valid bid, "Bid $X". Pays either with a normal USDC transaction or with a **gasless** bid: one signature, no transaction, no gas. |
 | **Outbid bidder** | Their USDC becomes claimable in the same transaction as the bid that beat them. A banner says "You were outbid", and one **Withdraw** pulls everything they are owed across every auction. |
-| **Anyone, in the last 10 seconds** | A bid with under 10 seconds left sets the deadline to now + 10 seconds, up to 30 times per lot, so every auction is guaranteed to end. The clock visibly jumps back. |
+| **Anyone, in the last 10 seconds** | A bid with under 10 seconds left sets the deadline to now + 10 seconds, up to 500 times per lot, so every auction is guaranteed to end. The clock visibly jumps back. |
 | **At the hammer** | Anyone can call `settle()`. In one transaction the lot NFT moves from the vault to the winner and the winning bid is credited to the seller. The app sends it through Arc's Memo contract, so the settlement carries a receipt tagged with the lot ID. |
 | **After the sale** | The seller's bond stays locked. The winner releases it by confirming delivery, or it releases itself after 7 days. Before then the winner can open a dispute; the owner arbitrates, and if the owner does nothing for 14 days anyone can resolve it in the seller's favour, so a bond can never be locked forever. |
 | **Seller viewing their own lot** | Sees "This is your lot" instead of a Bid button. The contract also rejects the bid, so shill bidding from the seller's own wallet is impossible. |
 
 Every lot on mainnet is listed by a real seller. There are no automated or house auctions.
+
+## What you can auction (v7)
+
+| Kind | Examples on Arc mainnet | How delivery works | Can either side refuse? |
+|---|---|---|---|
+| **ERC-20 token** | EURC (allowlisted) | The amount is escrowed at listing; at the hammer the seller is paid and the winner claims the tokens to any address | No. Both sides are escrowed before the auction starts. |
+| **ERC-721 NFT** | ERC-8004 AI-agent identities (allowlisted); NFT collections on request | The NFT is escrowed at listing and claimed by the winner | No |
+| **ERC-1155** | Semi-fungible positions, editions | The amount is escrowed at listing and claimed by the winner | No |
+| **Off-chain item or service** | A code review, a logo, a physical good | The seller posts a bond. The winning bid is **held in escrow** until the winner confirms delivery, the seller refunds, or 7 days pass with no dispute. | The buyer cannot stall: after 7 days anyone can release the escrow. The seller cannot keep the money without delivering: a dispute goes to the owner, the buyer gets payment + bond if the seller is at fault, and if nobody rules within 14 days the payment splits 50/50. |
+
+Only allowlisted token contracts can be listed. A hostile token could accept a deposit and then refuse to hand it to the winner, so each contract is reviewed (no fee-on-transfer, no rebasing, no surprising hooks) before the owner adds it. USYC exists on Arc but is permissioned: the vault itself would need to be an eligible holder, so it is not allowlisted. Claims go to any address the winner chooses, so a blocklisted or ineligible wallet can redirect delivery.
 
 ## Why this needs Arc, and only Arc
 
@@ -196,7 +208,7 @@ The auction engine. One contract holds every lot, every bid and every balance.
 
 | Function | Caller | What it does |
 |---|---|---|
-| `list(lotURI, reserve, durationSecs, minIncrement)` | seller | Validates limits (reserve <= 5 USDC, 0 < step <= 1 USDC, duration > 0). Writes the lot, pulls the bond (= reserve) from the seller, mints the lot NFT into `LotVault`. Emits `Listed`. |
+| `list(kind, asset, id, amount, lotURI, reserve, durationSecs, minIncrement)` | seller | Validates limits (reserve <= `maxReserve`, step > 0, duration > 0, on-chain assets must be allowlisted). OFFCHAIN: pulls the bond and mints a lot NFT into `LotVault`. ERC721/ERC1155/ERC20: moves the asset into `LotVault` and checks it arrived exactly (ownerOf / balance increase). Emits `Listed`. |
 | `bid(lotId, amount)` | anyone except the seller | Runs `_bidCore`, then pulls `amount` USDC from the caller with `transferFrom`. |
 | `bidWithAuthorization(lotId, amount, from, validAfter, validBefore, salt, v, r, s)` | relayer, for a signer | Computes the bound nonce, runs `_bidCore` for `from`, then pulls `amount` with `USDC.receiveWithAuthorization`. Emits `RelayedBid`. |
 | `settle(lotId)` | anyone, after the deadline | Marks the lot settled. If sold: credits the seller with the winning bid, moves the NFT to the winner, holds the bond. If unsold: credits the bond back and returns the NFT to the seller. Emits `Hammer` and `BondHeld`, or `Unsold`. |
@@ -206,7 +218,11 @@ The auction engine. One contract holds every lot, every bid and every balance.
 | `resolveDispute(lotId, sellerAtFault)` | owner | Sends the bond to the winner (seller at fault) or to the seller. |
 | `resolveDisputeTimeout(lotId)` | anyone, 14 days after settle | If the owner never arbitrated, releases the bond to the seller. |
 | `claim()` | anyone | Sends the caller their whole `claimable` balance. |
-| `cancel(lotId)` | seller or owner, while there are no bids | Returns the NFT and the bond to the seller. |
+| `cancel(lotId)` | seller or owner, while there are no bids | Credits the bond back; the seller reclaims the asset with `claimLotAsset`. |
+| `claimLotAsset(lotId, to)` | winner (sold) or seller (unsold/cancelled) | Sends the escrowed asset to any address the claimant chooses. Once only. |
+| `releaseEscrow(lotId)` | anyone, 7 days after an off-chain sale with no dispute | Pays the seller the held payment + bond. |
+| `refundBuyer(lotId)` | seller of an off-chain lot | Returns the payment to the buyer and the bond to the seller. |
+| `setAllowedAsset(asset, kind, allow)` / `setMaxReserve(n)` | owner | Curates which token contracts can be auctioned; adjusts the reserve cap (max 100,000 USDC). |
 | `pause()` / `unpause()` | owner | Halts `list` and `bid`. Never blocks `settle`, `claim` or the bond functions, so funds can always leave. |
 | `setReputationWriter(rw)` | owner | Wires the optional reputation contract (unset on mainnet). |
 | `renounceOwnership()` | nobody | Disabled, so the contract can never be stuck paused with no owner. |
@@ -221,7 +237,7 @@ The core bid logic, `_bidCore(bidder, lotId, amount)`, enforces, in this order:
 
 Only after all state is written does the contract pull the bidder's USDC.
 
-**Constants:** `MAX_RESERVE = 5 USDC`, `SOFT_CLOSE_WINDOW = 10 s`, `MAX_EXTENSIONS = 30`, `BOND_TIMEOUT = 7 days`, `DISPUTE_RESOLVE_TIMEOUT = 14 days`.
+**Constants:** `maxReserve = 1,000 USDC` (owner-adjustable, never above `MAX_RESERVE_CAP = 100,000 USDC`), `SOFT_CLOSE_WINDOW = 10 s`, `MAX_EXTENSIONS = 500`, `DELIVERY_WINDOW = 7 days`, `DISPUTE_RESOLVE_TIMEOUT = 14 days`.
 
 **Events:** `Listed`, `Bid`, `RelayedBid`, `Outbid`, `Extended`, `Hammer`, `Unsold`, `Claimed`, `Cancelled`, `BondHeld`, `BondReleased`, `Disputed`, `DisputeResolved`, `ReputationWriterUpdated`. Together they let anyone rebuild the full history of every lot from logs alone, which is exactly what the `/proof` page does.
 
@@ -241,10 +257,10 @@ Connects Gavel to ERC-8004. A seller links their ERC-8004 agent identity with `l
 
 | Contract | Address | Source |
 |---|---|---|
-| AuctionHouse | [`0x24D890c1285D481cB6B8761318A8250C922956dd`](https://explorer.arc.io/address/0x24D890c1285D481cB6B8761318A8250C922956dd) | [Sourcify exact match](https://repo.sourcify.dev/5042/0x24D890c1285D481cB6B8761318A8250C922956dd) |
-| GavelLot | [`0x5f1a8677d47d39D28C75936574B3529686Bb9121`](https://explorer.arc.io/address/0x5f1a8677d47d39D28C75936574B3529686Bb9121) | [Sourcify exact match](https://repo.sourcify.dev/5042/0x5f1a8677d47d39D28C75936574B3529686Bb9121) |
-| LotVault | [`0xeD8a17B1e9aF7cA83d501248985A2d8FfC575A2F`](https://explorer.arc.io/address/0xeD8a17B1e9aF7cA83d501248985A2d8FfC575A2F) | [Sourcify exact match](https://repo.sourcify.dev/5042/0xeD8a17B1e9aF7cA83d501248985A2d8FfC575A2F) |
-| ReputationWriter | [`0x8865A988DD9ff40a55590C7ce136512bC6A2E1CD`](https://explorer.arc.io/address/0x8865A988DD9ff40a55590C7ce136512bC6A2E1CD) | [Sourcify exact match](https://repo.sourcify.dev/5042/0x8865A988DD9ff40a55590C7ce136512bC6A2E1CD) |
+| AuctionHouse | [`0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E`](https://explorer.arc.io/address/0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E) | [Sourcify exact match](https://repo.sourcify.dev/5042/0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E) |
+| GavelLot | [`0x95CaC1B5Ab1eA40F016dc0C7d2Fb41A1BB8263AB`](https://explorer.arc.io/address/0x95CaC1B5Ab1eA40F016dc0C7d2Fb41A1BB8263AB) | [Sourcify exact match](https://repo.sourcify.dev/5042/0x95CaC1B5Ab1eA40F016dc0C7d2Fb41A1BB8263AB) |
+| LotVault | [`0xB0Cd097BBFC8ba8a4A1250d9F891C7Db8BA906b9`](https://explorer.arc.io/address/0xB0Cd097BBFC8ba8a4A1250d9F891C7Db8BA906b9) | [Sourcify exact match](https://repo.sourcify.dev/5042/0xB0Cd097BBFC8ba8a4A1250d9F891C7Db8BA906b9) |
+| ReputationWriter | [`0x236572D0981dB417638FbD7b4Ac8406AE4d286C6`](https://explorer.arc.io/address/0x236572D0981dB417638FbD7b4Ac8406AE4d286C6) | [Sourcify exact match](https://repo.sourcify.dev/5042/0x236572D0981dB417638FbD7b4Ac8406AE4d286C6) |
 | Owner | `0xBa6A590E4215CDE9448cd01A0B86531476E4dA0F` | the builder's own wallet |
 
 External contracts used: USDC `0x3600000000000000000000000000000000000000` (6 decimals), Memo `0x5294E9927c3306DcBaDb03fe70b92e01cCede505`, Multicall3 `0xcA11bde05977b3631167028862bE2a173976CA11`, ERC-8004 IdentityRegistry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`, ERC-8004 ReputationRegistry `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63`. Each was checked with `eth_getCode` on mainnet before deployment.
@@ -334,7 +350,7 @@ Things that only show up when you actually build on Arc, and how Gavel handles e
 
 ## Proof on Arc mainnet
 
-- **Deploy:** AuctionHouse in block 27,790,604, tx [`0xa17499ea...d7b2`](https://explorer.arc.io/tx/0xa17499eaed3ccc04ecb6a6939d9d8b8ec1f90a1e8de1ccd3fb44d0662861d7b2). ReputationWriter tx [`0xc64d48e7...c419`](https://explorer.arc.io/tx/0xc64d48e7e148f8b1c3089012a6e6c0fb3b7c10aad22e87ad24ef96496a67c419). Total deploy gas 4,070,482, which cost 0.082 USDC.
+- **Deploy (v7):** AuctionHouse in block 28,065,938, tx [`0xad6537e1...0c03`](https://explorer.arc.io/tx/0xad6537e1f54b167bdd9b7ed66c35157871a152e3523929518b6ee9eff4500c03). EURC and ERC-8004 identities allowlisted in txs [`0xe575e017...52ec`](https://explorer.arc.io/tx/0xe575e0179f1764f2ec8f795a067382dbe1da55bfe25c9f1e87c74ac7655f52ec) and [`0xcafe61bc...2e21`](https://explorer.arc.io/tx/0xcafe61bca3316f80136a81b44d7a457d9a86945f665979d6e096d920d6252e21). The first mainnet auction (lot #0) ran on v6 `0x24D8...56dd` and stays there. ReputationWriter tx [`0xc64d48e7...c419`](https://explorer.arc.io/tx/0xc64d48e7e148f8b1c3089012a6e6c0fb3b7c10aad22e87ad24ef96496a67c419). Total deploy gas 4,070,482, which cost 0.082 USDC.
 - **Verified:** all four contracts match their source exactly on Sourcify, and their wiring was checked on-chain (`usdc()`, `owner()`, `lotVault()`, `gavelLot()`, `auctionHouse()`, `reputationRegistry()`).
 - **Activity:** every mainnet transaction is listed with explorer links in [PROOF.md](PROOF.md), and the live `/proof` page recomputes the totals from chain.
 - **Testnet history:** six AuctionHouse versions were deployed to Arc testnet during the build. A full end-to-end run (gas bid, gasless bid, last-second extension, settle, refund claim, delivery confirmation) passed on the final version before mainnet, and those hashes are in PROOF.md too.
@@ -360,11 +376,11 @@ A whole auction with three bids, a settlement and two claims costs about 2 cents
 
 **How it was reviewed**
 
-1. **37 Foundry tests**, listed in full below.
+1. **59 Foundry tests**, the first 37 listed in full below.
 2. **Slither** static analysis: no medium or high findings. The remaining informational items (timestamp comparisons for deadlines, a reentrancy note on `list` behind `nonReentrant`, a missing zero-check where `address(0)` intentionally disables reputation) are by design.
 3. **A line-by-line internal review**, written up in [AUDIT.md](AUDIT.md).
 4. **An independent Arc Studio review** (turn 21), which judged each fix and flagged the owner's cancel power as a centralisation point.
-5. The mainnet deploy script re-runs all 37 tests and refuses to deploy if any fail.
+5. The mainnet deploy script re-runs all 59 tests and refuses to deploy if any fail.
 
 **The bug we found on-chain.** While testing with two real wallets on testnet, lot #115 showed the seller bidding on their own auction. The money all reconciled to the cent, but the behaviour should never have been possible. It triggered the full review, and three fixes went in before mainnet:
 
@@ -381,13 +397,13 @@ A whole auction with three bids, a settlement and two claims costs about 2 cents
 - `pause()` stops new listings and bids but can never block settlement, claims or bond releases.
 - Ownership cannot be renounced, so the contract cannot be left paused with nobody able to unpause it.
 - The owner cannot move anyone's funds. Owner powers are pausing, cancelling a lot that has no bids, and arbitrating disputes, with a 14-day permissionless fallback.
-- v1 caps the reserve at 5 USDC and the bid step at 1 USDC.
+- The reserve is capped at 1,000 USDC while the code has no third-party audit; bids and steps are uncapped. Only allowlisted token contracts can be auctioned.
 
 This is an internal review plus an Arc Studio review, not a professional third-party audit. Use small amounts.
 
-## Test suite, all 37
+## Test suite
 
-Run with `forge test` in `onchain/`. All 37 pass.
+Run with `forge test` in `onchain/`. All 59 pass. Tests 38-53 cover the v7 lot kinds and escrow; 54-59 are the attack tests from the v7 audit (see AUDIT.md). The original 37:
 
 | # | Test | What it proves |
 |---|---|---|
@@ -461,7 +477,7 @@ Dated, and kept rather than edited away.
 
 ## Limitations
 
-- **Delivery of off-chain items depends on the seller.** If a seller never delivers, the winner recovers the bond (equal to the reserve) through a dispute, not the full price. That is why v1 targets digital and creator lots and caps amounts.
+- **Off-chain items still need the seller to deliver.** Since v7 the winning payment is held in escrow until the winner confirms, the seller refunds, or the 7-day window ends; a dispute goes to the owner, and if the owner does not rule within 14 days the payment is split 50/50. On-chain lots (NFTs, ERC-1155, ERC-20) need no trust at all: the asset is escrowed at listing.
 - **Shill bidding from a second wallet** cannot be prevented by any auction contract. The seller's own wallet is blocked; for everything else, the bid history is public.
 - **The owner** can pause new listings and bids, cancel a lot that has no bids, and arbitrate disputes. The owner cannot move anyone's funds, and disputes resolve without the owner after 14 days.
 - **The reputation bond discount is off on mainnet.** Without sybil resistance, a seller could farm clean sales by winning their own lots from a second wallet.
@@ -488,7 +504,7 @@ Dated, and kept rather than edited away.
 git clone https://github.com/timix648/gavel && cd gavel/onchain
 forge install foundry-rs/forge-std --no-git
 npm install @openzeppelin/contracts@5.1.0
-forge test        # 37 tests
+forge test        # 59 tests
 ```
 
 **Web app**
@@ -526,7 +542,7 @@ gavel/
       GavelLot.sol            ERC-721 lot token
       LotVault.sol            escrow for listed lots
       ReputationWriter.sol    ERC-8004 reputation bridge
-      test/AuctionHouse.t.sol 37 Foundry tests
+      test/AuctionHouse.t.sol 59 Foundry tests
       test-helpers/           MockUSDC with EIP-3009, mock ERC-8004 registries
   app/
     src/
@@ -559,7 +575,7 @@ gavel/
 
 **What if the seller never delivers?** Open a dispute within 7 days of the hammer. If the seller is found at fault, you receive their bond.
 
-**Can an auction run forever?** No. Each lot can be extended at most 30 times, so it ends at most 300 seconds after its original deadline.
+**Can an auction run forever?** No. Each lot can be extended at most 500 times, and every extension needs a real, higher bid that locks real USDC.
 
 **Who can settle?** Anyone, once the deadline passes. Usually the winner or the seller does it from the auction room.
 

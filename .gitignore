@@ -18,3 +18,7 @@ turn*-run.log
 local-changes.txt
 app/dist/
 app/.vite/
+tg.sh
+sl.sh
+slither_run.sh
+turn*-run.log

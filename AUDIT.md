@@ -27,3 +27,33 @@ New invariant test test_37 replays lot #115's numbers (0.70 / 0.98 / 1.26) and c
 1. Redeploy v6 to testnet with these fixes; update app, relayer, keeper addresses; re-run e2e.
 2. Confirm the USDC ERC-20 interface address on Arc mainnet equals 0x3600...0000 (hardcoded in the constructor).
 3. Owner = a wallet the user controls (ideally a multisig), never the relayer key.
+
+---
+
+# v7 review (27 Oct 2026)
+
+Scope: AuctionHouse v7 and LotVault v7 as written by Arc Studio in turn 23, against the spec V7-DESIGN.md. Method: line-by-line review, 59 Foundry tests (6 written by me to attack the findings), Slither, and real-chain scenarios on testnet.
+
+| # | Severity | Finding | Status |
+|---|---|---|---|
+| C1 | **Critical** | Leftover `releaseBondAfterTimeout`: anyone could strand an off-chain sale's escrowed payment forever after 7 days | Fixed: function removed (test 54) |
+| H1 | High | Arbiter timeout counted from the sale, not the dispute | Fixed: `disputedAt` (test 55) |
+| M1 | Medium | USYC is permissioned; the vault is not an eligible holder, so listings would revert | Not allowlisted; removed from the UI |
+| L1 | Low | The vault accepted any stray ERC-721 via safe transfer | Fixed: only Gavel lot NFTs (test 57) |
+| L2 | Low | `BondHeld` emitted for bond-free lots | Fixed |
+
+Threats checked and holding:
+- **Fee-on-transfer and rebasing tokens:** blocked by the allowlist plus the exact balance-increase check.
+- **Malicious token refusing transfer out:** blocked by the allowlist.
+- **Blocklisted or permissioned recipient:** the claim can go to any address.
+- **ERC-1155 hooks and reentrancy:** `nonReentrant` everywhere, plus a flag that only accepts ERC-1155 deposits during a listing.
+- **Double claim:** per-lot flag.
+- **Listing an asset you don't own:** the transfer reverts.
+- **Double payment from escrow:** a single state machine (NONE / HELD / DISPUTED / CLOSED).
+- **Dust in the 50/50 split:** buyer gets `floor(x/2)`, seller gets the rest.
+
+Residual risks:
+- Allowlisted tokens are upgradeable by their issuers (EURC is a Circle proxy).
+- The block proposer orders transactions within a block.
+- A seller can shill from a second wallet.
+- The owner can pause, cancel lots with no bids, and arbitrate. The owner cannot move funds, and arbitration times out to a 50/50 split.

@@ -35,6 +35,13 @@ const FALLBACK_GAS = {
   recordSale:      200_000n,
   register:        300_000n,
   linkSeller:      150_000n,
+  // v7
+  'approve-erc721':   80_000n,
+  'approve-erc1155':  80_000n,
+  'approve-asset':    80_000n,
+  claimLotAsset:    200_000n,
+  releaseEscrow:    120_000n,
+  refundBuyer:      120_000n,
 } as const
 export type TxKind = keyof typeof FALLBACK_GAS
 
@@ -63,7 +70,7 @@ export function useWithGas() {
 
     let gas: bigint
     try {
-      const est = await client.estimateContractGas({ ...(call as ContractCall), account } as never)
+      const est = await client.estimateContractGas({ ...(call as ContractCall), account })
       gas = (est * 13n) / 10n
     } catch (err) {
       if (!isRpcUnavailable(err)) throw err // a real revert: surface it, send nothing

@@ -3,6 +3,8 @@ pragma solidity ^0.8.20;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
+/// @notice Minimal interface to read a lot's settled/bondReleased/disputed/seller/highestBidder
+///         from AuctionHouse v7. The full Lot struct is returned by lots(id).
 interface IAuctionHouse {
     struct Lot {
         address seller;
@@ -46,13 +48,9 @@ contract ReputationWriter is Ownable {
     IIdentityRegistry public immutable identityRegistry;
     IReputationRegistry public immutable reputationRegistry;
 
-    /// @notice ERC-8004 agentId for each seller address (0 = not registered)
     mapping(address => uint256) public sellerAgentId;
-    /// @notice Whether a seller has an agentId linked through this contract
     mapping(address => bool) public sellerRegistered;
-    /// @notice Whether a lot has already been recorded (prevents double-recording)
     mapping(uint256 => bool) public lotRecorded;
-    /// @notice Count of clean (positive) sales for a seller
     mapping(address => uint256) public cleanSales;
 
     event SaleRecorded(uint256 indexed lotId, address indexed seller, uint256 indexed agentId, bool positive);
@@ -98,7 +96,6 @@ contract ReputationWriter is Ownable {
 
         bool positive = !lot.disputed;
 
-        // Self-sales do not count toward clean sales (anti-gaming)
         if (lot.highestBidder == lot.seller) {
             lotRecorded[lotId] = true;
             emit SaleRecorded(lotId, lot.seller, 0, false);
@@ -119,14 +116,7 @@ contract ReputationWriter is Ownable {
             bytes32 feedbackHash = keccak256(abi.encode(lotId, lot.seller, positive));
 
             try reputationRegistry.giveFeedback(
-                agentId,
-                score,
-                0,
-                tag1,
-                "gavel",
-                "",
-                feedbackURI,
-                feedbackHash
+                agentId, score, 0, tag1, "gavel", "", feedbackURI, feedbackHash
             ) {} catch {}
         }
 

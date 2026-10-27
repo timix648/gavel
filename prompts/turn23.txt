@@ -1,0 +1,43 @@
+Turn 23: Gavel v7. Any Arc asset, escrow on both sides, no refusals.
+
+Read context/V7-DESIGN.md first. It is the spec; follow it exactly, and where it is silent, keep v6 behaviour.
+The uploaded files are the current production code (mainnet v6 plus hand fixes logged in STUDIO.md). Build on them.
+
+CONTRACTS (contracts/)
+1. AuctionHouse v7, per the spec:
+   - Lot kinds OFFCHAIN, ERC721, ERC1155, ERC20.
+   - New `list(kind, asset, id, amount, lotURI, reserve, durationSecs, minIncrement)`.
+   - Owner asset allowlist `setAllowedAsset`.
+   - `claimLotAsset(lotId, to)` pull claim.
+   - OFFCHAIN payment escrow: `releaseEscrow`, `refundBuyer`, `dispute`, `resolveDispute`, `resolveDisputeTimeout` with a 50/50 split; an escrowState enum; DELIVERY_WINDOW = 7 days; DISPUTE_RESOLVE_TIMEOUT = 14 days measured from the dispute.
+   - Reserve cap 1,000 USDC, adjustable by the owner with `setMaxReserve`, never above 100,000 USDC. No step cap. MAX_EXTENSIONS = 500.
+   - Keep the seller-bid block, zero-bid block, gasless `bidWithAuthorization` with the bound nonce, pause, disabled renounceOwnership, pull payments, and all events. Add events: AssetClaimed, EscrowReleased, BuyerRefunded, AllowedAssetSet.
+   Keep the `lots(uint256)` getter usable by the frontend. If the struct grows, keep a stable getter, or add `lotKind(lotId)` / `lotAsset(lotId)` views.
+2. LotVault v7 holds ERC721, ERC1155 and ERC20 assets and Gavel lot NFTs. Only the AuctionHouse can move assets. `onERC1155Received` / `onERC1155BatchReceived` accept only while the AuctionHouse has flagged an expected deposit (spec T13). Release uses transferFrom (ERC721), safeTransferFrom (ERC1155) and SafeERC20 (ERC20).
+3. ReputationWriter: keep it working with the new lot getter.
+4. Mocks in test-helpers: ERC721, ERC1155, plain ERC20, fee-on-transfer ERC20, and a blocklisting ERC20 that reverts transfers to a blocked address.
+
+TESTS (contracts/test/)
+Keep every v6 test passing, adapted to the new list() signature where needed (OFFCHAIN kind). Add every test listed in spec section 7. Run the full suite and report the exact count and any failures.
+
+FRONTEND (src/)
+- Create page: a "What are you selling?" choice:
+  - Off-chain item or service: as today, with a note that the payment is held in escrow until delivery.
+  - NFT (ERC-721): collection address + token id.
+  - Multi-token (ERC-1155): contract + id + amount.
+  - Token (ERC-20): token + amount.
+  For on-chain kinds, only allowlisted contracts are accepted. Show a dropdown of the allowlist with names (EURC, ERC-8004 Agent Identity, USYC). Approve the asset before listing, using the existing withGas/estimate pattern. Reserve and step inputs: remove the 5 USDC and 1 USDC caps from the UI, and enforce the contract's maxReserve.
+- Auction room:
+  - show what is being sold (kind, asset, id, amount, contract link);
+  - after settle for on-chain kinds, a "Claim to" box (defaults to the connected wallet, editable) for the winner, or for the seller if unsold;
+  - for OFFCHAIN, the escrow states: held (with days left), disputed, released, refunded, split;
+  - buttons: Confirm delivery (winner), Refund buyer (seller), Open dispute (winner, with the existing confirmation step), Release escrow (anyone after the window), owner resolve buttons, and the 14-day arbiter-timeout button;
+  - a USYC warning that only eligible wallets can receive it.
+- Lobby and landing cards: show the asset kind.
+- Keep the design system, the existing components, and every hand fix (the Why-Arc animation, dispute confirm, gasless relay through /relay/bid, mainnet chain config).
+- Do NOT change src/chain.ts network settings: the app stays on Arc mainnet. Put any new constants (allowlist display names, the mainnet asset addresses from the spec) in chain.ts.
+
+DEPLOY
+Deploy AuctionHouse v7 + ReputationWriter to Arc Testnet from your deployer for verification only. Report the addresses and the deploy block. Do not repoint the app to testnet.
+
+Run typecheck and lint. Report every file changed, the test count, and anything in the spec you could not do or think is wrong.

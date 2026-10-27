@@ -554,3 +554,23 @@ What I checked: every address against the deploy output, and the app loading in 
    - the close line slid backwards on replay.
 
    All fixed. The chip now sits beside the clock, briefly, and is hidden on phones, where the caption already says it. Re-measured on both widths: clocks agree, 0 clipped tiles, one caption per lane, a steady header, and nothing over the dot.
+
+## Turn 23 (27 Oct 2026): Gavel v7, any Arc asset, escrow on both sides
+Prompt: prompts/turn23.txt, with the spec V7-DESIGN.md uploaded as context. I wrote the spec after researching what lives on Arc mainnet and checking each asset on-chain: EURC, USYC, ERC-8004 agent identities (ERC-721), and the NFTs and tokenized RWAs Arc lists.
+Studio built:
+- four lot kinds (OFFCHAIN, ERC721, ERC1155, ERC20);
+- an owner asset allowlist;
+- a pull asset claim to any address;
+- off-chain payment escrow with refund, dispute and a 50/50 arbiter timeout;
+- a raised, owner-adjustable reserve cap, no step cap, and 500 extensions;
+- five token mocks, 16 new tests (53/53), and the Create, auction-room and card UI.
+
+It also deployed to testnet. Usage went from 53% to 59% of the 30-day limit.
+
+### What I caught in my audit of turn 23 (manual fixes 16-19)
+16. **Critical: C1.** Studio left the v6 `releaseBondAfterTimeout` in place. On an off-chain sale, anyone could call it after 7 days. It marked the bond released and paid only the bond, which blocked `releaseEscrow`, `refundBuyer` and `dispute`, so **the winning payment was locked forever**. I removed the function; `releaseEscrow` is the only no-dispute exit. Test 54 covers it.
+17. **High: H1.** The arbiter timeout counted 14 days from the sale, not from the dispute as the spec says. I added `disputedAt`. Test 55 covers it, and the auction room's timeout button uses it too.
+18. **Medium: M1.** USYC is permissioned, so the vault itself would have to be on USYC's allowlist and every listing would revert. I removed it from the Create page and from the mainnet allowlist.
+19. **Low.** The vault accepted any stray ERC-721 sent with `safeTransferFrom`; it now accepts only Gavel lot NFTs (test 57). `BondHeld` is no longer emitted for bond-free on-chain lots. I also added tests for the escrow confirm and seller-at-fault paths (56), unsolicited ERC-1155 (58), and the winner claiming an ERC-721 to another address (59).
+
+Result: **59/59 tests**, Slither clean of medium and high. Studio's own testnet deploy (`0xe16b…52a8`) still contains C1, so I redeployed the fixed code to testnet (`0x71A4…3A04`) and ran real-chain scenarios before mainnet (PROOF.md).

@@ -35,14 +35,17 @@ export const EXPLORER = 'https://explorer.arc.io'
 export const USDC_ADDRESS   = '0x3600000000000000000000000000000000000000' as const
 export const USDC_DECIMALS  = 6
 
-/** AuctionHouse v6 mainnet deployment (shill-bid guard + zero-bid guard + transferFrom in LotVault) */
-export const AUCTION_HOUSE_ADDRESS = '0x24D890c1285D481cB6B8761318A8250C922956dd' as const
+/** AuctionHouse v7 mainnet deployment (four lot kinds: OFFCHAIN, ERC721, ERC1155, ERC20) */
+export const AUCTION_HOUSE_ADDRESS = '0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E' as const
+
+/** AuctionHouse v7 testnet deployment with the audit fixes (verification only; app stays on mainnet) */
+export const AUCTION_HOUSE_TESTNET_ADDRESS = '0x71A4FA23a2B7Fd7b4a11032c44f1e30591b83A04' as const
 
 /**
  * Block the AuctionHouse was deployed at — used as getLogs fromBlock.
- * AuctionHouse v6 mainnet tx: 0xa17499eaed3ccc04ecb6a6939d9d8b8ec1f90a1e8de1ccd3fb44d0662861d7b2
+ * AuctionHouse v7 mainnet tx: 0xad6537e1f54b167bdd9b7ed66c35157871a152e3523929518b6ee9eff4500c03
  */
-export const DEPLOY_BLOCK = 27790604n
+export const DEPLOY_BLOCK = 28065938n
 
 /**
  * ReputationWriter v3 — wired to AuctionHouse v6.
@@ -50,13 +53,23 @@ export const DEPLOY_BLOCK = 27790604n
  * to enable bond discounts. Sellers must call linkSeller(agentId) after registering
  * their identity on the IdentityRegistry.
  */
-export const REPUTATION_WRITER_ADDRESS = '0x8865A988DD9ff40a55590C7ce136512bC6A2E1CD' as const
+export const REPUTATION_WRITER_ADDRESS = '0x236572D0981dB417638FbD7b4Ac8406AE4d286C6' as const
 
 /**
  * ERC-8004 registries on Arc Mainnet.
  */
 export const IDENTITY_REGISTRY_ADDRESS   = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' as const
 export const REPUTATION_REGISTRY_ADDRESS = '0x8004BAa17C55a88189AE136b182e5fdA19dE9b63' as const
+
+/**
+ * Planned v7 mainnet asset allowlist.
+ * EURC and USYC are ERC20 tokens; the IdentityRegistry is ERC721.
+ * NOTE: USYC (0x8a5D…) is permissioned — only eligible wallets can receive it.
+ */
+export const EURC_ADDRESS  = '0xbEf5f6d51CB62b58e6A8f77868681825C6fe21c1' as const
+export const USYC_ADDRESS  = '0x8a5D989Bbb96929F689B0200f435f53dA42bF490' as const
+/** USYC transfer restriction warning shown in the UI when this asset is selected. */
+export const USYC_WARNING  = 'USYC is a permissioned token. Only KYC-eligible wallets can receive it. Confirm the buyer is eligible before listing.' as const
 
 /**
  * Memo contract — same address on testnet and mainnet.

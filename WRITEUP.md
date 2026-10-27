@@ -2,7 +2,7 @@
 
 **Live app:** https://gavel-alpha.vercel.app · **Arc Studio project:** https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed · **Repo:** https://github.com/timix648/gavel · **Video:** _link_
 
-**AuctionHouse on Arc mainnet:** [`0x24D890c1285D481cB6B8761318A8250C922956dd`](https://explorer.arc.io/address/0x24D890c1285D481cB6B8761318A8250C922956dd)
+**AuctionHouse on Arc mainnet:** [`0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E`](https://explorer.arc.io/address/0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E)
 **Example mainnet transaction:** _hash from the first live auction_
 
 ## One line
@@ -86,4 +86,4 @@ _Mainnet activity summary (fill from /proof after the live event):_ _N_ lots, _N
 
 ## Stack
 
-Solidity 0.8.28 with Foundry (37 tests), OpenZeppelin, React + Vite + Tailwind, wagmi/viem, RainbowKit for any browser-extension EVM wallet, Motion, Bun for the relayer, and EIP-3009 USDC, Arc Memo and ERC-8004 on Arc mainnet.
+Solidity 0.8.28 with Foundry (59 tests), OpenZeppelin, React + Vite + Tailwind, wagmi/viem, RainbowKit for any browser-extension EVM wallet, Motion, Bun for the relayer, and EIP-3009 USDC, Arc Memo and ERC-8004 on Arc mainnet.

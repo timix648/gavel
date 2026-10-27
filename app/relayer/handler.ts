@@ -32,7 +32,7 @@ import { privateKeyToAccount } from 'viem/accounts'
 // ── Config ─────────────────────────────────────────────────────────────────────
 
 const RPC_URL = process.env.ARC_RPC_URL ?? 'https://rpc.mainnet.arc.io'
-const DEFAULT_AH_ADDRESS = '0x24D890c1285D481cB6B8761318A8250C922956dd'
+const DEFAULT_AH_ADDRESS = '0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E'
 const AH_ADDRESS = (process.env.AUCTION_HOUSE_ADDRESS ?? DEFAULT_AH_ADDRESS) as Address
 const USDC_ADDRESS = '0x3600000000000000000000000000000000000000' as Address
 const USDC_DECIMALS = 6

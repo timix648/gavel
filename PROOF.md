@@ -165,3 +165,50 @@ Seller `0xBa6A…dA0F` (the builder) and two bidders, `0x1d94…1038` and `0x5e5
 | claim 1.00 (bond back) | seller | [0xe542ee9e…b6c6](https://explorer.arc.io/tx/0xe542ee9e7327264668feb4380d79bc6854c6f0318d8bf72e4d2205c2f3a4b6c6) |
 
 USDC through the contract: 4.75 in (1.00 bond + 1.00 + 1.25 + 1.50 bids), 4.75 out. NFT #1 is owned by the winner `0x1d94…1038`.
+
+# v7 on Arc mainnet (27 Oct 2026)
+
+Deployed by the owner with deploy-mainnet-v7.sh (arc-forge, interactive key). The script re-ran the 59 tests before deploying. All four contracts are a Sourcify exact match.
+
+| Contract | Address |
+|---|---|
+| AuctionHouse v7 | `0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E` (block 28065938, tx 0xad6537e1f54b167bdd9b7ed66c35157871a152e3523929518b6ee9eff4500c03) |
+| GavelLot | `0x95CaC1B5Ab1eA40F016dc0C7d2Fb41A1BB8263AB` |
+| LotVault | `0xB0Cd097BBFC8ba8a4A1250d9F891C7Db8BA906b9` |
+| ReputationWriter | `0x236572D0981dB417638FbD7b4Ac8406AE4d286C6` (tx 0x9d195adf52a7a48d3ef182945dfd58c0d0f4c9bb41fa5df279bcfb45d8c4411c) |
+
+Allowlist transactions:
+- EURC `0xbEf5…21c1` as ERC-20: [0xe575e017…52ec](https://explorer.arc.io/tx/0xe575e0179f1764f2ec8f795a067382dbe1da55bfe25c9f1e87c74ac7655f52ec)
+- ERC-8004 IdentityRegistry `0x8004A169…a432` as ERC-721: [0xcafe61bc…2e21](https://explorer.arc.io/tx/0xcafe61bca3316f80136a81b44d7a457d9a86945f665979d6e096d920d6252e21)
+
+Verified on-chain:
+- `usdc()` is 0x3600…0000;
+- `maxReserve` is 1,000 USDC and `MAX_EXTENSIONS` is 500;
+- the vault and ReputationWriter point to v7;
+- calling `releaseBondAfterTimeout` reverts, because the function does not exist.
+
+Deploy gas: 5,072,467 + 793,565.
+
+v6 (`0x24D8…56dd`) holds lot #0 above and stays readable, but the app no longer lists on it.
+
+## v7 real-chain scenarios on Arc testnet (fixed code, `0x71A4FA23a2B7Fd7b4a11032c44f1e30591b83A04`)
+
+**ERC-721 lot: a real ERC-8004 agent identity (#897604)**
+1. Owner allowlisted the registry; the seller registered the identity, approved it and listed it. The vault took custody.
+2. The seller's own bid reverted: "seller cannot bid".
+3. A bid 0.10, then B bid 0.25. A was credited 0.10.
+4. Settle credited the seller exactly 0.25.
+5. A stranger's claim reverted: "not winner".
+6. The winner sent the identity to a different wallet.
+7. A double claim reverted: "already claimed".
+8. Withdrawals left the contract at 0.
+
+**Off-chain lot, confirm path**
+1. After settle the escrow was HELD and the seller was credited 0.
+2. `releaseEscrow` before the window reverted: "delivery window open".
+3. The winner confirmed, and the seller was credited 0.40 (0.30 payment + 0.10 bond).
+
+**Off-chain lot, refund path**
+1. The seller refunded: the buyer was credited 0.30 and the seller 0.10 (bond).
+
+**Escrow left in place:** one off-chain lot (#1) is still HELD with 0.40, exactly matching the contract's remaining balance.

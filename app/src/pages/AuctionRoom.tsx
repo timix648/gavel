@@ -13,9 +13,9 @@ import {
 } from '@phosphor-icons/react'
 import {
   AUCTION_HOUSE_ADDRESS, USDC_ADDRESS, CHAIN_ID, txUrl, addrUrl,
-  MEMO_ADDRESS, REPUTATION_WRITER_ADDRESS,
+  MEMO_ADDRESS, REPUTATION_WRITER_ADDRESS, USYC_ADDRESS, USYC_WARNING,
 } from '../chain'
-import { AUCTION_HOUSE_ABI, MEMO_ABI, REPUTATION_WRITER_ABI, type LotTuple } from '../abi'
+import { AUCTION_HOUSE_ABI, MEMO_ABI, REPUTATION_WRITER_ABI, type LotTuple, LotKind, EscrowState, LOT_KIND_LABEL } from '../abi'
 import { encodeFunctionData } from 'viem'
 import { fmtUsdc, fmtDuration, shortAddr, parseOnchainError } from '../utils'
 import { useLatestBlock } from '../useBlock'
@@ -412,6 +412,11 @@ export default function AuctionRoom() {
   const { isLoading: resolveLoading, isSuccess: resolveOk } = useWaitForTransactionReceipt({ hash: resolveHash })
   useEffect(() => { if (resolveOk) { toast.success('Dispute resolved. The bond is now claimable.'); void fetchLot() } }, [resolveOk, fetchLot])
   const [confirmDispute, setConfirmDispute] = useState(false)
+  const { data: disputedAtRaw } = useReadContract({
+    address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'disputedAt', args: [lotId], chainId: CHAIN_ID,
+    blockNumber: block?.blockNumber, query: { placeholderData: keepPreviousData },
+  })
+  const disputeOpenedAt = (disputedAtRaw as bigint | undefined) ?? 0n
   const { data: houseOwner } = useReadContract({
     address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'owner', chainId: CHAIN_ID,
   })
@@ -419,6 +424,56 @@ export default function AuctionRoom() {
   const { writeContract: claimTx, data: claimHash } = useWriteContract()
   const { isLoading: claimLoading, isSuccess: claimOk } = useWaitForTransactionReceipt({ hash: claimHash })
   useEffect(() => { if (claimOk) toast.success('USDC claimed') }, [claimOk])
+
+  // ── v7: lot kind, asset address, escrow state ────────────────────────────
+  const { data: rawLotKind } = useReadContract({
+    address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'lotKind',
+    args: [lotId], chainId: CHAIN_ID, query: { enabled: !!lot },
+  })
+  const { data: rawLotAsset, refetch: refetchLotAsset } = useReadContract({
+    address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'lotAsset',
+    args: [lotId], chainId: CHAIN_ID, query: { enabled: !!lot },
+  })
+  const { data: rawLotAmount } = useReadContract({
+    address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'lotAmount',
+    args: [lotId], chainId: CHAIN_ID, query: { enabled: !!lot },
+  })
+  const { data: rawEscrowState, refetch: refetchEscrowState } = useReadContract({
+    address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'escrowState',
+    args: [lotId], chainId: CHAIN_ID, query: { enabled: !!lot },
+  })
+  const { data: rawAssetClaimed, refetch: refetchAssetClaimed } = useReadContract({
+    address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'assetClaimed',
+    args: [lotId], chainId: CHAIN_ID, query: { enabled: !!lot },
+  })
+
+  const lotAmount    = typeof rawLotAmount === 'bigint' ? rawLotAmount : 0n
+
+  // ── v7: claimLotAsset ─────────────────────────────────────────────────────
+  const [claimAssetTo, setClaimAssetTo] = useState('')
+  const { writeContract: claimAssetTx, data: claimAssetHash } = useWriteContract()
+  const { isLoading: claimAssetLoading, isSuccess: claimAssetOk } = useWaitForTransactionReceipt({ hash: claimAssetHash })
+  useEffect(() => {
+    if (claimAssetOk) {
+      toast.success('Asset claimed')
+      void fetchLot()
+      void refetchAssetClaimed()
+    }
+  }, [claimAssetOk, fetchLot, refetchAssetClaimed])
+
+  // ── v7: releaseEscrow ─────────────────────────────────────────────────────
+  const { writeContract: releaseEscrowTx, data: releaseEscrowHash } = useWriteContract()
+  const { isLoading: releaseEscrowLoading, isSuccess: releaseEscrowOk } = useWaitForTransactionReceipt({ hash: releaseEscrowHash })
+  useEffect(() => {
+    if (releaseEscrowOk) { toast.success('Escrow released to seller.'); void fetchLot(); void refetchEscrowState() }
+  }, [releaseEscrowOk, fetchLot, refetchEscrowState])
+
+  // ── v7: refundBuyer ───────────────────────────────────────────────────────
+  const { writeContract: refundBuyerTx, data: refundBuyerHash } = useWriteContract()
+  const { isLoading: refundBuyerLoading, isSuccess: refundBuyerOk } = useWaitForTransactionReceipt({ hash: refundBuyerHash })
+  useEffect(() => {
+    if (refundBuyerOk) { toast.success('Payment refunded to buyer. Bond returned to seller.'); void fetchLot(); void refetchEscrowState() }
+  }, [refundBuyerOk, fetchLot, refetchEscrowState])
 
   // ── Derived ────────────────────────────────────────────────────────────────
   if (lotLoading) {
@@ -456,10 +511,27 @@ export default function AuctionRoom() {
   const isOutbid      = !!address && claimableAmt > 0n
   const chainNowSec   = block?.blockTimestamp ? Number(block.blockTimestamp) : Math.floor(Date.now() / 1000)
   const isHouseOwner  = !!address && typeof houseOwner === 'string' && houseOwner.toLowerCase() === address.toLowerCase()
-  const disputeTimedOut = lot.settledAt > 0n && chainNowSec >= Number(lot.settledAt) + 14 * 86400
+  // The arbiter's 14 days run from the dispute, not from the sale.
+  const disputeTimedOut = disputeOpenedAt > 0n && chainNowSec >= Number(disputeOpenedAt) + 14 * 86400
   const bondDays      = lot.settledAt > 0n ? Math.max(0, 7 - Math.floor((chainNowSec - Number(lot.settledAt)) / 86400)) : 7
   const isBidBusy     = bidStep !== 'idle'
   const urgent        = isLive && secs < 10
+
+  // v7 derived
+  const lotKind       = rawLotKind !== undefined ? (rawLotKind as number) as LotKind : LotKind.OFFCHAIN
+  const lotAsset      = (rawLotAsset ?? NULL_ADDR) as `0x${string}`
+  const escState      = rawEscrowState !== undefined ? (rawEscrowState as number) as EscrowState : EscrowState.NONE
+  const assetAlreadyClaimed = rawAssetClaimed === true
+  const isOnchainKind = lotKind !== LotKind.OFFCHAIN
+  const isSold        = lot.settled && lot.highestBidder !== NULL_ADDR
+  const isUnsold      = (lot.settled || lot.cancelled) && lot.highestBidder === NULL_ADDR
+  // Winner can claim asset for ERC721/ERC1155/ERC20 lots; seller can reclaim unsold
+  const canClaimAsset = isOnchainKind && !assetAlreadyClaimed && (
+    (isSold && isWinner) || (isUnsold && isSellerView)
+  )
+  // For OFFCHAIN lots: seller can claim unsold GavelLot NFT
+  const canClaimOffchainNFT = !isOnchainKind && !assetAlreadyClaimed && isUnsold && isSellerView
+  const isUsycAsset   = lotAsset.toLowerCase() === USYC_ADDRESS.toLowerCase()
 
   return (
     <div className="py-6">
@@ -832,6 +904,75 @@ export default function AuctionRoom() {
               </div>
             )}
 
+          {/* v7: Asset claim box (ERC721/ERC1155/ERC20 winner; OFFCHAIN unsold seller) */}
+            {(canClaimAsset || canClaimOffchainNFT) && (
+              <div className="rounded-panel border border-line bg-surface p-5 space-y-3">
+                <p className="text-sm font-semibold text-ink">{isWinner ? 'Claim your asset' : 'Reclaim your asset'}</p>
+                {isUsycAsset && (
+                  <p className="text-xs text-warn bg-warn/10 px-3 py-2 rounded-btn">{USYC_WARNING}</p>
+                )}
+                <p className="text-xs text-ink-3">
+                  {isWinner
+                    ? `Send the ${LOT_KIND_LABEL[lotKind]} asset to any address you control.`
+                    : 'The lot ended unsold. Reclaim your asset.'}
+                </p>
+                <div className="space-y-2">
+                  <input
+                    type="text" placeholder="Recipient address (default: your wallet)"
+                    value={claimAssetTo} onChange={e => setClaimAssetTo(e.target.value)}
+                    className="w-full bg-surface-2 border border-line rounded-input px-3 py-2 text-sm text-ink placeholder:text-ink-3 font-mono focus:outline-none focus:border-ink-2"
+                  />
+                  <button
+                    onClick={() => {
+                      const to = (claimAssetTo.trim() || address) as `0x${string}` | undefined
+                      if (!to) return
+                      void withGas('claimLotAsset', { address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'claimLotAsset', args: [lotId, to], chainId: CHAIN_ID }).then(claimAssetTx).catch(onGasError)
+                    }}
+                    disabled={claimAssetLoading || !address}
+                    className="w-full py-2.5 rounded-btn text-sm font-semibold bg-accent text-accent-ink hover:opacity-90 active:translate-y-px disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    {claimAssetLoading ? <Spinner size={13} className="animate-spin" /> : <CheckCircle size={13} />}
+                    Claim asset
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* v7: OFFCHAIN escrow state box (for non-OFFCHAIN we skip the escrow UI) */}
+            {!isOnchainKind && isSettled && lot.highestBidder !== NULL_ADDR && escState === EscrowState.HELD && (
+              <div className="rounded-panel border border-line bg-surface p-5 space-y-3">
+                <p className="text-sm font-semibold text-ink">Payment in escrow</p>
+                <p className="text-xs text-ink-3">
+                  {fmtUsdc(lot.highestBid)} is held until the buyer confirms delivery, disputes, or 7 days pass.
+                </p>
+                {isWinner && (
+                  <button
+                    onClick={() => void withGas('releaseEscrow', { address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'releaseEscrow', args: [lotId], chainId: CHAIN_ID }).then(releaseEscrowTx).catch(onGasError)}
+                    disabled={releaseEscrowLoading}
+                    className="w-full py-2 rounded-btn text-xs font-medium border border-line text-ink-2 hover:border-ink-3 hover:text-ink active:translate-y-px disabled:opacity-50 flex items-center justify-center gap-1"
+                  >
+                    {releaseEscrowLoading && <Spinner size={11} className="animate-spin" />}
+                    Release escrow after 7 days
+                  </button>
+                )}
+                {isSellerView && (
+                  <button
+                    onClick={() => void withGas('refundBuyer', { address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'refundBuyer', args: [lotId], chainId: CHAIN_ID }).then(refundBuyerTx).catch(onGasError)}
+                    disabled={refundBuyerLoading}
+                    className="w-full py-2 rounded-btn text-xs font-medium border border-warn/50 text-warn hover:bg-warn/10 active:translate-y-px disabled:opacity-50 flex items-center justify-center gap-1"
+                  >
+                    {refundBuyerLoading && <Spinner size={11} className="animate-spin" />}
+                    Refund buyer
+                  </button>
+                )}
+              </div>
+            )}
+            {!isOnchainKind && isSettled && lot.highestBidder !== NULL_ADDR && escState === EscrowState.CLOSED && (
+              <div className="rounded-panel border border-line bg-surface-2 px-4 py-3">
+                <p className="text-xs text-good flex items-center gap-1"><CheckCircle size={11} /> Escrow closed. Funds released.</p>
+              </div>
+            )}
+
           </div>
         </div>
 
@@ -839,6 +980,11 @@ export default function AuctionRoom() {
         <div className="md:col-span-7 order-2 md:order-1 space-y-6">
           {/* Title + seller — desktop only; mobile version is above grid */}
           <div className="hidden md:block">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-tag bg-surface-2 text-ink-3">
+                {LOT_KIND_LABEL[lotKind]}
+              </span>
+            </div>
             <h1 className="text-3xl md:text-4xl font-semibold text-ink tracking-tight text-balance leading-tight">
               {title || `Lot #${id}`}
             </h1>
@@ -847,6 +993,14 @@ export default function AuctionRoom() {
               <a href={addrUrl(lot.seller)} target="_blank" rel="noopener noreferrer"
                 className="font-mono text-ink-2 hover:text-ink transition-colors">{shortAddr(lot.seller)}</a>
             </p>
+            {isOnchainKind && lotAsset !== '0x0000000000000000000000000000000000000000' && (
+              <p className="text-xs text-ink-3 mt-1 font-mono">
+                Asset:{' '}
+                <a href={addrUrl(lotAsset)} target="_blank" rel="noopener noreferrer"
+                  className="hover:text-ink transition-colors">{shortAddr(lotAsset)}</a>
+                {isUsycAsset && <span className="ml-2 text-warn">USYC (permissioned)</span>}
+              </p>
+            )}
           </div>
 
           {/* Lot image — real image from metadata, or composed placeholder */}

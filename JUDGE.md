@@ -15,7 +15,7 @@ Live app: https://gavel-alpha.vercel.app · Live proof (no wallet): https://gave
 ## No wallet? Read the receipts
 | What | Link |
 |---|---|
-| AuctionHouse, source verified (exact match) | [explorer](https://explorer.arc.io/address/0x24D890c1285D481cB6B8761318A8250C922956dd) · [Sourcify](https://repo.sourcify.dev/5042/0x24D890c1285D481cB6B8761318A8250C922956dd) |
+| AuctionHouse, source verified (exact match) | [explorer](https://explorer.arc.io/address/0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E) · [Sourcify](https://repo.sourcify.dev/5042/0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E) |
 | Mainnet deploy | [0xa17499ea…](https://explorer.arc.io/tx/0xa17499eaed3ccc04ecb6a6939d9d8b8ec1f90a1e8de1ccd3fb44d0662861d7b2) |
 | A gasless bid sent by the relayer | _mainnet hash after the live event_ |
 | A bid that extended the clock | _mainnet hash_ |
@@ -26,7 +26,7 @@ Live app: https://gavel-alpha.vercel.app · Live proof (no wallet): https://gave
 | | |
 |---|---|
 | Contracts | AuctionHouse, GavelLot, LotVault, ReputationWriter. All 4 Sourcify exact match on chain 5042. |
-| Tests | 37 Foundry. Also Slither (no medium/high) and an Arc Studio review ([AUDIT.md](AUDIT.md)) |
+| Tests | 59 Foundry. Also Slither (no medium/high) and an Arc Studio review ([AUDIT.md](AUDIT.md)) |
 | Gas | bid 115,569 (≈ $0.003) · gasless bid 144,648 (≈ $0.004) · settle 128,668 (≈ $0.003) · list 427,667 (≈ $0.011) |
 | Automated activity | none. Every lot is listed by a real seller. |
 | Built in Arc Studio | 22 turns, every one logged with what Studio got wrong ([STUDIO.md](STUDIO.md)) |
@@ -34,7 +34,7 @@ Live app: https://gavel-alpha.vercel.app · Live proof (no wallet): https://gave
 
 ## Reproduce (read-only)
 ```bash
-git clone https://github.com/timix648/gavel && cd gavel/onchain && forge test     # 37 tests
+git clone https://github.com/timix648/gavel && cd gavel/onchain && forge test     # 59 tests
 ```
 
 ## Honest limitations

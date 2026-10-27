@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Lightning } from '@phosphor-icons/react'
-import { LotTuple } from '../abi'
+import { LotTuple, LotKind, LOT_KIND_LABEL } from '../abi'
 import { fmtUsdc, shortAddr, fmtDuration } from '../utils'
 import { useChainNow } from '../useBlock'
 
@@ -11,13 +11,15 @@ interface Props {
   title?: string
   wide?: boolean       // spans 2 cols in the grid
   hasRelayedBid?: boolean
+  /** v7: lot kind — when provided, shows a small kind badge. */
+  kind?: LotKind
   /** Create-page preview: show this duration static, no countdown, "Preview" tag, not a link. */
   previewDurationSecs?: number
 }
 
 function getClientTimeSec() { return Date.now() / 1000 }
 
-export default function LotCard({ lotId, lot, title, wide, hasRelayedBid, previewDurationSecs }: Props) {
+export default function LotCard({ lotId, lot, title, wide, hasRelayedBid, kind, previewDurationSecs }: Props) {
   const isPreview = previewDurationSecs !== undefined
   // Chain time, interpolated between blocks. Before the first block arrives we fall back
   // to the PC clock once, so the card still renders something sensible.
@@ -54,9 +56,16 @@ export default function LotCard({ lotId, lot, title, wide, hasRelayedBid, previe
             <p className="font-semibold text-ink truncate text-base leading-tight">
               {title ?? `Lot #${lotId}`}
             </p>
-            <p className="text-xs text-ink-3 font-mono mt-0.5 truncate">
-              {shortAddr(lot.seller)}
-            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <p className="text-xs text-ink-3 font-mono truncate">
+                {shortAddr(lot.seller)}
+              </p>
+              {kind !== undefined && kind !== LotKind.OFFCHAIN && (
+                <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider px-1 py-px rounded-tag bg-surface-2 text-ink-3">
+                  {LOT_KIND_LABEL[kind]}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Status tag */}
