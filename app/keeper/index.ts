@@ -45,12 +45,12 @@ const HOUSE_PRIVATE_KEY = process.env.HOUSE_PRIVATE_KEY as Hex | undefined
 if (!HOUSE_PRIVATE_KEY) { console.error('[keeper] HOUSE_PRIVATE_KEY not set — exiting'); process.exit(1) }
 
 const AUCTION_HOUSE = (
-  process.env.AUCTION_HOUSE ?? '0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E'
+  process.env.AUCTION_HOUSE ?? '0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6'
 ) as Address
 
 const USDC_ADDRESS  = '0x3600000000000000000000000000000000000000' as Address
 const USDC_DECIMALS = 6
-const DEPLOY_BLOCK  = 28065938n
+const DEPLOY_BLOCK  = 28077831n
 
 const RPC_URL  = process.env.RPC_URL   ?? 'https://rpc.mainnet.arc.io'
 const PORT     = Number(process.env.KEEPER_PORT ?? 3002)

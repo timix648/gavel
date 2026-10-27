@@ -15,7 +15,7 @@
  *   Returns: { txHash } on success or { error } on failure.
  *
  * GET /stats
- *   Returns: { relayedBids, totalGasUsdc }
+ *   Returns: { relayedBids } -- count from on-chain RelayedBid events
  */
 
 import {
@@ -32,7 +32,7 @@ import { privateKeyToAccount } from 'viem/accounts'
 // ── Config ─────────────────────────────────────────────────────────────────────
 
 const RPC_URL = process.env.ARC_RPC_URL ?? 'https://rpc.mainnet.arc.io'
-const DEFAULT_AH_ADDRESS = '0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E'
+const DEFAULT_AH_ADDRESS = '0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6'
 const AH_ADDRESS = (process.env.AUCTION_HOUSE_ADDRESS ?? DEFAULT_AH_ADDRESS) as Address
 const USDC_ADDRESS = '0x3600000000000000000000000000000000000000' as Address
 const USDC_DECIMALS = 6
@@ -48,7 +48,8 @@ const DAILY_SPEND_CAP = 100_000_000n  // 100 USDC (6-dec units)
 // ── ABI ────────────────────────────────────────────────────────────────────────
 
 const AH_ABI = parseAbi([
-  'function bidWithAuthorization(uint256 lotId, uint256 amount, address from, uint256 validAfter, uint256 validBefore, bytes32 salt, uint8 v, bytes32 r, bytes32 s) external',
+  'function bidWithAuthorization(uint256 lotId, uint256 amount, uint256 topUp, address from, uint256 validAfter, uint256 validBefore, bytes32 salt, uint8 v, bytes32 r, bytes32 s) external',
+  'event RelayedBid(uint256 indexed lotId, address indexed bidder, uint256 amount)',
   'function lots(uint256 lotId) external view returns (address seller, uint256 tokenId, uint256 reserve, uint256 minIncrement, uint256 bond, uint256 deadline, uint256 highestBid, address highestBidder, uint256 extensions, uint256 settledAt, bool settled, bool cancelled, bool bondReleased, bool disputed)',
   'function paused() external view returns (bool)',
 ])
@@ -124,8 +125,7 @@ function checkDailySpend(addr: string, amount: bigint): { ok: boolean; reason?: 
 
 // ── Stats ──────────────────────────────────────────────────────────────────────
 
-let relayedBids = 0
-let totalGasUsdc = 0n  // in native (18-dec) units; convert to USDC (6-dec) for display
+// B10: stats come from on-chain RelayedBid events, not in-memory counters
 
 // ── Handler ────────────────────────────────────────────────────────────────────
 
@@ -144,9 +144,19 @@ export async function handle(req: Request): Promise<Response> {
     }
 
     if (req.method === 'GET' && url.pathname.endsWith('/stats')) {
-      // totalGasUsdc is in native units (18 dec); divide by 1e18 to get USDC display value
-      const gasUsdcDisplay = (Number(totalGasUsdc) / 1e18).toFixed(USDC_DECIMALS)
-      return Response.json({ relayedBids, totalGasUsdc: gasUsdcDisplay }, { headers: corsHeaders })
+      try {
+        const head = await publicClient.getBlockNumber()
+        const fromBlock = head > 50_000n ? head - 50_000n : 0n
+        const logs = await publicClient.getLogs({
+          address: AH_ADDRESS,
+          event: { name: 'RelayedBid', type: 'event', inputs: [{ name: 'lotId', type: 'uint256', indexed: true }, { name: 'bidder', type: 'address', indexed: true }, { name: 'amount', type: 'uint256', indexed: false }] },
+          fromBlock,
+          toBlock: head,
+        })
+        return Response.json({ relayedBids: logs.length }, { headers: corsHeaders })
+      } catch {
+        return Response.json({ relayedBids: 0 }, { headers: corsHeaders })
+      }
     }
 
     if (req.method === 'POST' && url.pathname.endsWith('/bid')) {
@@ -154,6 +164,7 @@ export async function handle(req: Request): Promise<Response> {
         const body = await req.json() as {
           lotId: number
           amount: string
+          topUp: string
           from: string
           validAfter: string
           validBefore: string
@@ -161,7 +172,8 @@ export async function handle(req: Request): Promise<Response> {
           sig: { v: number; r: string; s: string }
         }
 
-        const { lotId, amount, from, validAfter, validBefore, salt, sig } = body
+        const { lotId, amount, topUp: topUpStr, from, validAfter, validBefore, salt, sig } = body
+        const topUp = BigInt(topUpStr ?? '0')
 
         // ── Validate inputs ───────────────────────────────────────────────────
         if (!from || !salt || !sig) {
@@ -201,7 +213,8 @@ export async function handle(req: Request): Promise<Response> {
 
         // Check bidder has enough USDC balance
         const balance = await publicClient.readContract({ address: USDC_ADDRESS, abi: USDC_ABI, functionName: 'balanceOf', args: [from as Address] })
-        if (balance < amountBig) return Response.json({ error: `Bidder USDC balance too low (${balance} < ${amountBig})` }, { status: 400, headers: corsHeaders })
+        // v8: only topUp is pulled from wallet; credit covers the rest
+        if (balance < topUp) return Response.json({ error: `Bidder USDC balance too low for topUp (${balance} < ${topUp})` }, { status: 400, headers: corsHeaders })
 
         // ── Submit transaction ────────────────────────────────────────────────
         const callData = encodeFunctionData({
@@ -210,6 +223,7 @@ export async function handle(req: Request): Promise<Response> {
           args: [
             BigInt(lotId),
             amountBig,
+            topUp,
             from as Address,
             BigInt(validAfter),
             BigInt(validBefore),
@@ -259,11 +273,7 @@ export async function handle(req: Request): Promise<Response> {
         }
 
         // ── Log gas cost ──────────────────────────────────────────────────────
-        const gasNative = receipt.gasUsed * receipt.effectiveGasPrice
-        totalGasUsdc += gasNative
-        const gasUsdcDisplay = (Number(gasNative) / 1e18).toFixed(USDC_DECIMALS)
-        relayedBids += 1
-        console.log(`[relayed] lotId=${lotId} bidder=${from} amount=${amount} gasUsdc=${gasUsdcDisplay} tx=${txHash}`)
+        console.log(`[relayed] lotId=${lotId} bidder=${from} amount=${amount} topUp=${topUp} tx=${txHash}`)
 
         return Response.json({ txHash }, { headers: corsHeaders })
       } catch (err) {

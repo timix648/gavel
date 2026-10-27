@@ -7,7 +7,7 @@ Deadline: 1 Nov 2026 (DoraHacks: 2 Nov 04:59 UTC). Earlier submissions get earli
 |---|---|
 | Arc Studio project URL | https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed |
 | Live app | https://gavel-alpha.vercel.app |
-| Contract addresses | AuctionHouse 0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E (+ the 3 others in README) |
+| Contract addresses | AuctionHouse 0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6 (+ the 3 others in README) |
 | Example tx + explorer link | _first live mainnet bid or settle_ https://explorer.arc.io/tx/... |
 | Public repo | https://github.com/timix648/gavel |
 | Video walkthrough | _after recording_. Must show the build in Arc Studio AND a mainnet transaction |

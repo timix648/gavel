@@ -212,3 +212,20 @@ v6 (`0x24D8…56dd`) holds lot #0 above and stays readable, but the app no longe
 1. The seller refunded: the buyer was credited 0.30 and the seller 0.10 (bond).
 
 **Escrow left in place:** one off-chain lot (#1) is still HELD with 0.40, exactly matching the contract's remaining balance.
+
+# v8 on Arc mainnet (27 Oct 2026)
+
+| Contract | Address |
+|---|---|
+| AuctionHouse v8 | `0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6` (block 28077831, tx 0xe57ba2140d97356597d43894f18f8119288febc62ed92e0558650dd7eb7327d2) |
+| GavelLot | `0x871aDBA28fC21240E7020894292707e17e061222` |
+| LotVault | `0x226e779B81c6365a4b8f62c8FCAeB71799f54269` |
+| ReputationWriter | `0x98719b8AA176C0bB07a6863880F11be8f5bF1569` |
+
+Allowlist transactions:
+- EURC: [0xe96a261c…73cd](https://explorer.arc.io/tx/0xe96a261c12ee9fd0ca63047a566eae7bf5b8019ecbd98e97240e41e893c573cd)
+- ERC-8004 identities: [0x470d3a81…6f15](https://explorer.arc.io/tx/0x470d3a817c7ab47bf9e644185181eb5e4128ae323fc863a30d23a679e6a46f15)
+
+All 4 contracts are a Sourcify exact match. The deploy script ran 83/83 tests first.
+
+Earlier contracts stay readable: v6 `0x24D8…56dd` (lot #0, Oct 25) and v7 `0x6102…3A2E` (lot #0, $2.00, confirmed and closed). The app now lists on v8.

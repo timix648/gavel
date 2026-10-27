@@ -22,6 +22,7 @@ import { useLatestBlock } from '../useBlock'
 import { keepPreviousData } from '@tanstack/react-query'
 import { useWithGas } from '../txGas'
 import { useLogStore } from '../useLogs'
+import EvidencePanel from '../components/EvidencePanel'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function splitSig(sig: Hex) {
@@ -107,6 +108,8 @@ export default function AuctionRoom() {
   const [lotLoading, setLotLoading] = useState(true)
   const [title, setTitle] = useState('')
   const [lotImage, setLotImage] = useState<string | null>(null)
+  const [lotContact, setLotContact] = useState('')
+  const [lotDelivery, setLotDelivery] = useState('')
   const [prevBid, setPrevBid] = useState<bigint>(0n)
   const [bidFlash, setBidFlash] = useState(false)
 
@@ -150,9 +153,11 @@ export default function AuctionRoom() {
           functionName: 'tokenURI', args: [lot.tokenId],
         })
         if (uri.startsWith('data:application/json')) {
-          const json = JSON.parse(atob(uri.split(',')[1])) as { name?: string; image?: string }
+          const json = JSON.parse(atob(uri.split(',')[1])) as { name?: string; image?: string; contact?: string; delivery?: string }
           setTitle(json.name ?? '')
           setLotImage(json.image?.trim() || null)
+          if (json.contact) setLotContact(json.contact)
+          if (json.delivery) setLotDelivery(json.delivery)
         } else if (uri && !uri.startsWith('http') && !uri.startsWith('ipfs')) {
           setTitle(uri.trim())
         }
@@ -327,9 +332,20 @@ export default function AuctionRoom() {
       // Date.now() only before the first block arrives.
       const chainNow = block?.blockTimestamp ? Number(block.blockTimestamp) : Math.floor(Date.now() / 1000)
       const validBefore = BigInt(chainNow + 120)
+      // B1: credit = min(claimable, nextBid); topUp = nextBid - credit
+      // If full credit: use direct bid, not gasless
+      const credit = (claimable as bigint | undefined) ?? 0n
+      const topUp = nextBid > credit ? nextBid - credit : 0n
+      // Credit-only bids must use direct bid()
+      if (topUp === 0n) {
+        setBidStep('idle')
+        placeBid()
+        return
+      }
+      // v8 nonce: keccak256(abi.encode(AH, chainId, lotId, amount, topUp, salt))
       const usdcNonce   = keccak256(encodeAbiParameters(
-        parseAbiParameters('address, uint256, uint256, uint256, bytes32'),
-        [AUCTION_HOUSE_ADDRESS, BigInt(CHAIN_ID), lotId, nextBid, salt],
+        parseAbiParameters('address, uint256, uint256, uint256, uint256, bytes32'),
+        [AUCTION_HOUSE_ADDRESS, BigInt(CHAIN_ID), lotId, nextBid, topUp, salt],
       ))
       const sigHex = await signTypedDataAsync({
         domain: { name: 'USDC', version: '2', chainId: CHAIN_ID, verifyingContract: USDC_ADDRESS },
@@ -347,14 +363,14 @@ export default function AuctionRoom() {
         // decimal strings for uintN, and the signed hash is identical.
         message: {
           from: address, to: AUCTION_HOUSE_ADDRESS,
-          value: nextBid.toString(), validAfter: validAfter.toString(), validBefore: validBefore.toString(),
+          value: topUp.toString(), validAfter: validAfter.toString(), validBefore: validBefore.toString(),
           nonce: usdcNonce,
         } as never,
       })
       setBidStep('relaying')
       const resp = await fetch('/relay/bid', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lotId: Number(lotId), amount: nextBid.toString(), from: address, validAfter: validAfter.toString(), validBefore: validBefore.toString(), salt, sig: splitSig(sigHex) }),
+        body: JSON.stringify({ lotId: Number(lotId), amount: nextBid.toString(), topUp: topUp.toString(), from: address, validAfter: validAfter.toString(), validBefore: validBefore.toString(), salt, sig: splitSig(sigHex) }),
       })
       const data = await resp.json() as { txHash?: string; error?: string }
       if (!resp.ok || data.error) throw new Error(data.error ?? 'The relayer did not respond. Try again or bid with gas.')
@@ -406,7 +422,13 @@ export default function AuctionRoom() {
 
   const { writeContract: disputeTx, data: disputeHash } = useWriteContract()
   const { isLoading: disputeLoading, isSuccess: disputeOk } = useWaitForTransactionReceipt({ hash: disputeHash })
-  useEffect(() => { if (disputeOk) { toast.success('Dispute raised.'); void fetchLot() } }, [disputeOk, fetchLot])
+  useEffect(() => {
+    if (!disputeOk) return
+    toast.success('Dispute raised. The Gavel team has been notified.')
+    void fetchLot()
+    // The server re-checks the chain before emailing, so this can't be abused.
+    void fetch(`/api/notify-dispute?lot=${lotId.toString()}`).catch(() => {})
+  }, [disputeOk, fetchLot, lotId])
 
   const { writeContract: resolveTx, data: resolveHash } = useWriteContract()
   const { isLoading: resolveLoading, isSuccess: resolveOk } = useWaitForTransactionReceipt({ hash: resolveHash })
@@ -420,6 +442,15 @@ export default function AuctionRoom() {
   const { data: houseOwner } = useReadContract({
     address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'owner', chainId: CHAIN_ID,
   })
+
+  // B8: reputation button only if seller has linked ERC-8004 identity
+  const { data: sellerRegisteredRaw } = useReadContract({
+    address: REPUTATION_WRITER_ADDRESS, abi: REPUTATION_WRITER_ABI, functionName: 'sellerRegistered',
+    args: lot ? [lot.seller] : undefined,
+    chainId: CHAIN_ID,
+    query: { enabled: !!lot },
+  })
+  const sellerIsLinked = sellerRegisteredRaw === true
 
   const { writeContract: claimTx, data: claimHash } = useWriteContract()
   const { isLoading: claimLoading, isSuccess: claimOk } = useWaitForTransactionReceipt({ hash: claimHash })
@@ -472,8 +503,12 @@ export default function AuctionRoom() {
   const { writeContract: refundBuyerTx, data: refundBuyerHash } = useWriteContract()
   const { isLoading: refundBuyerLoading, isSuccess: refundBuyerOk } = useWaitForTransactionReceipt({ hash: refundBuyerHash })
   useEffect(() => {
-    if (refundBuyerOk) { toast.success('Payment refunded to buyer. Bond returned to seller.'); void fetchLot(); void refetchEscrowState() }
+    if (refundBuyerOk) { toast.success('Payment refunded to buyer. Bond returned to seller.'); void fetchLot(); void refetchEscrowState(); setRefundReason(''); setShowRefundField(false) }
   }, [refundBuyerOk, fetchLot, refetchEscrowState])
+
+  // B4: refund reason state
+  const [showRefundField, setShowRefundField] = useState(false)
+  const [refundReason, setRefundReason]       = useState('')
 
   // ── Derived ────────────────────────────────────────────────────────────────
   if (lotLoading) {
@@ -715,13 +750,27 @@ export default function AuctionRoom() {
                     {bidStep === 'relaying'   && <><Spinner size={16} className="animate-spin" />Relaying...</>}
                     {bidStep === 'idle' && (
                       address
-                        ? <>{gaslessMode && <Lightning size={15} weight="fill" />}{gaslessMode ? 'Gasless bid ' : 'Bid '}{fmtUsdc(nextBid)}</>
+                        ? (() => {
+                            const credit = claimableAmt
+                            const topUp = nextBid > credit ? nextBid - credit : 0n
+                            const hasSplit = credit > 0n && topUp > 0n
+                            return (
+                              <>
+                                {gaslessMode && <Lightning size={15} weight="fill" />}
+                                {hasSplit
+                                  ? <>${fmtUsdc(topUp)} top-up + {fmtUsdc(credit)} credit</>
+                                  : topUp === 0n && credit >= nextBid
+                                  ? <>Bid {fmtUsdc(nextBid)} from balance</>
+                                  : <>{gaslessMode ? 'Gasless bid ' : 'Bid '}{fmtUsdc(nextBid)}</>}
+                              </>
+                            )
+                          })()
                         : 'Connect wallet to bid'
                     )}
                   </button>
                   {!!address && bidStep === 'idle' && (
                     <p className="text-xs text-ink-3 -mt-1">
-                      Locks the full {fmtUsdc(nextBid)}. If you are outbid it comes back to you to claim.
+                      {claimableAmt >= nextBid ? 'Fully covered by your balance.' : claimableAmt > 0n ? `Uses $${fmtUsdc(claimableAmt)} from your balance, $${fmtUsdc(nextBid - claimableAmt)} new.` : `Locks $${fmtUsdc(nextBid)}. If outbid, returns to your balance.`}
                     </p>
                   )}
 
@@ -891,7 +940,8 @@ export default function AuctionRoom() {
                 {lot.bondReleased && (
                   <div className="space-y-2">
                     <p className="text-xs text-good flex items-center gap-1"><CheckCircle size={11} /> Bond released.</p>
-                    <button
+                    {sellerIsLinked && (
+                  <button
                       onClick={() => void withGas('recordSale', { address: REPUTATION_WRITER_ADDRESS, abi: REPUTATION_WRITER_ABI, functionName: 'recordSale', args: [lotId], chainId: CHAIN_ID }).then(recordSaleTx).catch(onGasError)}
                       disabled={recordSaleLoading}
                       className="w-full py-2.5 rounded-btn text-xs font-medium border border-line text-ink-2 hover:border-ink-3 hover:text-ink active:translate-y-px disabled:opacity-50 flex items-center justify-center gap-1"
@@ -899,6 +949,7 @@ export default function AuctionRoom() {
                       {recordSaleLoading ? <Spinner size={11} className="animate-spin" /> : <CheckCircle size={11} />}
                       Record to reputation registry
                     </button>
+                  )}
                   </div>
                 )}
               </div>
@@ -956,14 +1007,36 @@ export default function AuctionRoom() {
                   </button>
                 )}
                 {isSellerView && (
-                  <button
-                    onClick={() => void withGas('refundBuyer', { address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'refundBuyer', args: [lotId], chainId: CHAIN_ID }).then(refundBuyerTx).catch(onGasError)}
-                    disabled={refundBuyerLoading}
-                    className="w-full py-2 rounded-btn text-xs font-medium border border-warn/50 text-warn hover:bg-warn/10 active:translate-y-px disabled:opacity-50 flex items-center justify-center gap-1"
-                  >
-                    {refundBuyerLoading && <Spinner size={11} className="animate-spin" />}
-                    Refund buyer
-                  </button>
+                  <div className="space-y-2">
+                    {!showRefundField ? (
+                      <button
+                        onClick={() => setShowRefundField(true)}
+                        className="w-full py-2 rounded-btn text-xs font-medium border border-warn/50 text-warn hover:bg-warn/10 active:translate-y-px flex items-center justify-center gap-1"
+                      >
+                        Refund buyer
+                      </button>
+                    ) : (
+                      <>
+                        <textarea
+                          value={refundReason} onChange={e => setRefundReason(e.target.value.slice(0, 280))}
+                          placeholder="Reason (optional, max 280 chars, stored on-chain)"
+                          rows={2}
+                          className="w-full bg-surface-2 border border-line rounded-input px-3 py-2 text-xs text-ink placeholder:text-ink-3 resize-none focus:outline-none focus:border-ink-2"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => void withGas('refundBuyer', { address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'refundBuyer', args: [lotId, refundReason], chainId: CHAIN_ID }).then(refundBuyerTx).catch(onGasError)}
+                            disabled={refundBuyerLoading}
+                            className="flex-1 py-2 rounded-btn text-xs font-medium border border-warn/50 text-warn hover:bg-warn/10 active:translate-y-px disabled:opacity-50 flex items-center justify-center gap-1"
+                          >
+                            {refundBuyerLoading && <Spinner size={11} className="animate-spin" />}
+                            Confirm refund
+                          </button>
+                          <button onClick={() => setShowRefundField(false)} className="flex-1 py-2 rounded-btn text-xs border border-line text-ink-2 hover:text-ink">Cancel</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -1021,6 +1094,35 @@ export default function AuctionRoom() {
               </div>
             )}
           </div>
+
+          {/* B2: OFFCHAIN winner: contact seller card */}
+          {!isOnchainKind && isSold && isWinner && lotContact && (
+            <div className="rounded-panel border border-good/40 bg-good/5 p-4 space-y-2">
+              <p className="text-sm font-semibold text-good">You won. Contact the seller to arrange delivery.</p>
+              <p className="font-mono text-sm text-ink bg-surface-2 px-3 py-2 rounded-btn break-all">{lotContact}</p>
+              {lotDelivery && <p className="text-xs text-ink-2">{lotDelivery}</p>}
+              <p className="text-[10px] text-ink-3">This contact info is stored publicly on-chain.</p>
+            </div>
+          )}
+
+          {/* B4: Refunded notice */}
+          {!isOnchainKind && isSold && escState === EscrowState.CLOSED && isWinner && (
+            <div className="rounded-panel border border-line bg-surface-2 px-4 py-3">
+              <p className="text-xs text-ink-2">Payment refunded by the seller.</p>
+            </div>
+          )}
+
+          {/* B5: Evidence panel on HELD or DISPUTED OFFCHAIN lots */}
+          {!isOnchainKind && (escState === EscrowState.HELD || escState === EscrowState.DISPUTED) && (
+            <EvidencePanel
+              lotId={lotId}
+              buyer={lot.highestBidder}
+              seller={lot.seller}
+              walletAddress={address}
+              chainId={chainId}
+              escrowActive={escState === EscrowState.HELD || escState === EscrowState.DISPUTED}
+            />
+          )}
 
           {/* Bid history */}
           <div>

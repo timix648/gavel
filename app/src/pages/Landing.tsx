@@ -67,14 +67,33 @@ function FadeUp({ children, delay = 0, className = '' }: { children: React.React
 // decimals: number of decimal places to maintain in the count-up value
 function useCountUp(target: number, duration = 1200, decimals = 0) {
   const [val, setVal] = useState(0)
-  const started = useRef(false)
+  const visible = useRef(false)   // B9: track visibility separately from started
+  const raf = useRef<number | null>(null)
   const ref = useRef<HTMLDivElement>(null)
+
+  // B9: trigger a fresh count-up whenever target changes (and element is visible)
+  useEffect(() => {
+    if (!visible.current) return
+    if (raf.current !== null) cancelAnimationFrame(raf.current)
+    const start = Date.now()
+    const startVal = 0
+    const mult = Math.pow(10, decimals)
+    const tick = () => {
+      const p = Math.min(1, (Date.now() - start) / duration)
+      setVal(Math.round((startVal + p * (target - startVal)) * mult) / mult)
+      if (p < 1) { raf.current = requestAnimationFrame(tick) } else { raf.current = null }
+    }
+    raf.current = requestAnimationFrame(tick)
+    return () => { if (raf.current !== null) cancelAnimationFrame(raf.current) }
+  }, [target, duration, decimals])
+
+  // Start on first intersection
   useEffect(() => {
     const el = ref.current
-    if (!el || started.current) return
+    if (!el) return
     const obs = new IntersectionObserver(entries => {
-      if (!entries[0].isIntersecting) return
-      started.current = true
+      if (!entries[0].isIntersecting || visible.current) return
+      visible.current = true
       obs.disconnect()
       const start = Date.now()
       const mult = Math.pow(10, decimals)
@@ -87,7 +106,9 @@ function useCountUp(target: number, duration = 1200, decimals = 0) {
     }, { threshold: 0.3 })
     obs.observe(el)
     return () => obs.disconnect()
-  }, [target, duration, decimals])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])  // run once; target changes handled above
+
   return { val, ref }
 }
 

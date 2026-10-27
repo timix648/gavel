@@ -1,0 +1,13 @@
+Turn 26: Gavel v8. Read context/V8-DESIGN.md first and follow it exactly. Where it is silent, keep v7 behaviour.
+The uploaded files are the audited v7 now on Arc mainnet (turns 23-25). Build on them; do not reintroduce anything removed in the v7 audit (for example releaseBondAfterTimeout).
+
+1. Contracts (contracts/): implement section A in AuctionHouse v8. Add the MockUSDC blocklist support needed by the tests.
+2. Tests (contracts/test/): keep all 59 v7 tests passing, adapting signatures where needed, and add every test in section C. Run the full suite and report the exact count.
+3. App (src/, relayer/, api/, vercel.json): implement section B, items 1-10.
+   - New Vercel Functions go in api/ in the same style as api/relay/[action].ts: Web Request/Response handlers, `.js` extensions on relative imports.
+   - Add `@vercel/blob` to package.json.
+   - Read secrets only from env vars (BLOB_READ_WRITE_TOKEN, RESEND_API_KEY, NOTIFY_EMAIL). Never put them in code.
+   - Update relayer/handler.ts for the new gasless signature (topUp).
+   - Keep the design system, the Why-Arc animation fixes, the dispute confirmation step, and mainnet chain config. Don't change the AUCTION_HOUSE_ADDRESS constants; I repoint after the mainnet deploy.
+4. Deploy AuctionHouse v8 + ReputationWriter to Arc Testnet for verification only, and report the addresses.
+5. Run typecheck and lint. Report every file changed, the test count, and anything in the spec you think is wrong or could lose funds.

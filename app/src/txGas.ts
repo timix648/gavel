@@ -42,6 +42,8 @@ const FALLBACK_GAS = {
   claimLotAsset:    200_000n,
   releaseEscrow:    120_000n,
   refundBuyer:      120_000n,
+  // v8
+  submitEvidence:   100_000n,
 } as const
 export type TxKind = keyof typeof FALLBACK_GAS
 

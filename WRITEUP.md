@@ -2,7 +2,7 @@
 
 **Live app:** https://gavel-alpha.vercel.app · **Arc Studio project:** https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed · **Repo:** https://github.com/timix648/gavel · **Video:** _link_
 
-**AuctionHouse on Arc mainnet:** [`0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E`](https://explorer.arc.io/address/0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E)
+**AuctionHouse on Arc mainnet:** [`0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6`](https://explorer.arc.io/address/0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6)
 **Example mainnet transaction:** _hash from the first live auction_
 
 ## One line

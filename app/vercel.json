@@ -11,5 +11,11 @@
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron-disputes",
+      "schedule": "0 9 * * *"
+    }
   ]
 }

@@ -11,12 +11,12 @@ bidder's USDC is released in the same transaction, and at the hammer the lot and
 [![For reviewers](https://img.shields.io/badge/For-reviewers-3ddc84?style=for-the-badge)](JUDGE.md)
 [![Demo video](https://img.shields.io/badge/Demo-video-FF0000?style=for-the-badge)](VIDEO_URL)
 [![Built in Arc Studio](https://img.shields.io/badge/Built_in-Arc_Studio-8b5cf6?style=for-the-badge)](https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed)
-[![AuctionHouse](https://img.shields.io/badge/AuctionHouse-0x6102...3A2E-4ea1ff?style=for-the-badge)](https://explorer.arc.io/address/0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E)
+[![AuctionHouse](https://img.shields.io/badge/AuctionHouse-0xA51A...dEa6-4ea1ff?style=for-the-badge)](https://explorer.arc.io/address/0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6)
 
 ![Arc](https://img.shields.io/badge/Arc-mainnet_5042-4ea1ff?style=flat)
 ![USDC-as-gas](https://img.shields.io/badge/gas-USDC-3ddc84?style=flat)
 ![Solidity](https://img.shields.io/badge/Solidity-0.8.28-363636?style=flat&logo=solidity&logoColor=white)
-![Foundry](https://img.shields.io/badge/Foundry-59_tests-3ddc84?style=flat)
+![Foundry](https://img.shields.io/badge/Foundry-83_tests-3ddc84?style=flat)
 ![Sourcify](https://img.shields.io/badge/Sourcify-4_exact_matches-3ddc84?style=flat)
 ![EIP-3009](https://img.shields.io/badge/gasless-EIP--3009-06b6d4?style=flat)
 ![license](https://img.shields.io/badge/license-MIT-blue?style=flat)
@@ -29,7 +29,7 @@ bidder's USDC is released in the same transaction, and at the hammer the lot and
 
 - **Problem:** online auctions either hand the money to a platform you have to trust, or, on-chain, cannot run a soft close. On a chain with 12-second blocks, a bid made in the last ten seconds lands after the auction has closed, and every bidder needs ETH for gas on top of the USDC they are bidding.
 - **On Arc:** sub-second deterministic finality makes a 10-second soft close real. USDC is the only asset a bidder needs, and with a one-signature gasless bid not even gas. Settlement moves the lot NFT and the payment atomically, so neither side can back out.
-- **Proof:** four contracts on Arc mainnet, all source-verified on Sourcify with exact matches. 59 Foundry tests, Slither, an internal review and an independent Arc Studio review. A bid costs about $0.003 and a gasless bid about $0.004. Every transaction hash is in [PROOF.md](PROOF.md), and the live `/proof` page reads the chain directly, with no wallet.
+- **Proof:** four contracts on Arc mainnet, all source-verified on Sourcify with exact matches. 83 Foundry tests, Slither, an internal review and an independent Arc Studio review. A bid costs about $0.003 and a gasless bid about $0.004. Every transaction hash is in [PROOF.md](PROOF.md), and the live `/proof` page reads the chain directly, with no wallet.
 
 ---
 
@@ -257,10 +257,10 @@ Connects Gavel to ERC-8004. A seller links their ERC-8004 agent identity with `l
 
 | Contract | Address | Source |
 |---|---|---|
-| AuctionHouse | [`0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E`](https://explorer.arc.io/address/0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E) | [Sourcify exact match](https://repo.sourcify.dev/5042/0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E) |
-| GavelLot | [`0x95CaC1B5Ab1eA40F016dc0C7d2Fb41A1BB8263AB`](https://explorer.arc.io/address/0x95CaC1B5Ab1eA40F016dc0C7d2Fb41A1BB8263AB) | [Sourcify exact match](https://repo.sourcify.dev/5042/0x95CaC1B5Ab1eA40F016dc0C7d2Fb41A1BB8263AB) |
-| LotVault | [`0xB0Cd097BBFC8ba8a4A1250d9F891C7Db8BA906b9`](https://explorer.arc.io/address/0xB0Cd097BBFC8ba8a4A1250d9F891C7Db8BA906b9) | [Sourcify exact match](https://repo.sourcify.dev/5042/0xB0Cd097BBFC8ba8a4A1250d9F891C7Db8BA906b9) |
-| ReputationWriter | [`0x236572D0981dB417638FbD7b4Ac8406AE4d286C6`](https://explorer.arc.io/address/0x236572D0981dB417638FbD7b4Ac8406AE4d286C6) | [Sourcify exact match](https://repo.sourcify.dev/5042/0x236572D0981dB417638FbD7b4Ac8406AE4d286C6) |
+| AuctionHouse | [`0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6`](https://explorer.arc.io/address/0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6) | [Sourcify exact match](https://repo.sourcify.dev/5042/0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6) |
+| GavelLot | [`0x871aDBA28fC21240E7020894292707e17e061222`](https://explorer.arc.io/address/0x871aDBA28fC21240E7020894292707e17e061222) | [Sourcify exact match](https://repo.sourcify.dev/5042/0x871aDBA28fC21240E7020894292707e17e061222) |
+| LotVault | [`0x226e779B81c6365a4b8f62c8FCAeB71799f54269`](https://explorer.arc.io/address/0x226e779B81c6365a4b8f62c8FCAeB71799f54269) | [Sourcify exact match](https://repo.sourcify.dev/5042/0x226e779B81c6365a4b8f62c8FCAeB71799f54269) |
+| ReputationWriter | [`0x98719b8AA176C0bB07a6863880F11be8f5bF1569`](https://explorer.arc.io/address/0x98719b8AA176C0bB07a6863880F11be8f5bF1569) | [Sourcify exact match](https://repo.sourcify.dev/5042/0x98719b8AA176C0bB07a6863880F11be8f5bF1569) |
 | Owner | `0xBa6A590E4215CDE9448cd01A0B86531476E4dA0F` | the builder's own wallet |
 
 External contracts used: USDC `0x3600000000000000000000000000000000000000` (6 decimals), Memo `0x5294E9927c3306DcBaDb03fe70b92e01cCede505`, Multicall3 `0xcA11bde05977b3631167028862bE2a173976CA11`, ERC-8004 IdentityRegistry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`, ERC-8004 ReputationRegistry `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63`. Each was checked with `eth_getCode` on mainnet before deployment.
@@ -376,11 +376,11 @@ A whole auction with three bids, a settlement and two claims costs about 2 cents
 
 **How it was reviewed**
 
-1. **59 Foundry tests**, the first 37 listed in full below.
+1. **83 Foundry tests**, the first 37 listed in full below.
 2. **Slither** static analysis: no medium or high findings. The remaining informational items (timestamp comparisons for deadlines, a reentrancy note on `list` behind `nonReentrant`, a missing zero-check where `address(0)` intentionally disables reputation) are by design.
 3. **A line-by-line internal review**, written up in [AUDIT.md](AUDIT.md).
 4. **An independent Arc Studio review** (turn 21), which judged each fix and flagged the owner's cancel power as a centralisation point.
-5. The mainnet deploy script re-runs all 59 tests and refuses to deploy if any fail.
+5. The mainnet deploy script re-runs all 83 tests and refuses to deploy if any fail.
 
 **The bug we found on-chain.** While testing with two real wallets on testnet, lot #115 showed the seller bidding on their own auction. The money all reconciled to the cent, but the behaviour should never have been possible. It triggered the full review, and three fixes went in before mainnet:
 
@@ -403,7 +403,7 @@ This is an internal review plus an Arc Studio review, not a professional third-p
 
 ## Test suite
 
-Run with `forge test` in `onchain/`. All 59 pass. Tests 38-53 cover the v7 lot kinds and escrow; 54-59 are the attack tests from the v7 audit (see AUDIT.md). The original 37:
+Run with `forge test` in `onchain/`. All 83 pass. Tests 38-53 cover the v7 lot kinds and escrow; 54-59 are the attack tests from the v7 audit (see AUDIT.md). The original 37:
 
 | # | Test | What it proves |
 |---|---|---|
@@ -504,7 +504,7 @@ Dated, and kept rather than edited away.
 git clone https://github.com/timix648/gavel && cd gavel/onchain
 forge install foundry-rs/forge-std --no-git
 npm install @openzeppelin/contracts@5.1.0
-forge test        # 59 tests
+forge test        # 83 tests
 ```
 
 **Web app**
@@ -542,7 +542,7 @@ gavel/
       GavelLot.sol            ERC-721 lot token
       LotVault.sol            escrow for listed lots
       ReputationWriter.sol    ERC-8004 reputation bridge
-      test/AuctionHouse.t.sol 59 Foundry tests
+      test/AuctionHouse.t.sol 83 Foundry tests
       test-helpers/           MockUSDC with EIP-3009, mock ERC-8004 registries
   app/
     src/

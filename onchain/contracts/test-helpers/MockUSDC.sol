@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-/// @dev Minimal ERC-20 mock with 6 decimals, mint, and a blocklist that makes
-///      transfer() TO the blocked address return false (not revert), simulating
-///      Circle USDC blocklist behaviour on Arc Testnet.
+/// @dev Minimal ERC-20 mock with 6 decimals, mint, and a blocklist.
+///      Default blocklist mode: transfer() TO the blocked address returns false (not revert),
+///      simulating Circle USDC blocklist behaviour on Arc Testnet.
+///      Revert mode (blocklistReverts=true): transfer() TO the blocked address REVERTS,
+///      needed to test _payOut's catch branch (when usdc.transfer itself reverts).
 contract MockUSDC {
     string  public name     = "Mock USDC";
     string  public symbol   = "mUSDC";
@@ -13,6 +15,9 @@ contract MockUSDC {
     mapping(address => mapping(address => uint256)) public allowance;
     mapping(address => bool)                        public blocked;
     mapping(address => mapping(bytes32 => bool))    public authorizationState;
+
+    /// @dev When true, transfer() to a blocked address reverts instead of returning false.
+    bool public blocklistReverts;
 
     // Optional: callback hook for reentrancy test
     address public transferHook; // if set, called with (to, amount) on transfer
@@ -31,6 +36,11 @@ contract MockUSDC {
         blocked[account] = true;
     }
 
+    /// @dev Enable revert-on-blocklist mode (for _payOut catch branch tests).
+    function setBlocklistReverts(bool reverts) external {
+        blocklistReverts = reverts;
+    }
+
     function setTransferHook(address hook) external {
         transferHook = hook;
     }
@@ -42,7 +52,12 @@ contract MockUSDC {
     }
 
     function transfer(address to, uint256 amount) external returns (bool) {
-        if (blocked[to]) return false;
+        if (blocked[to]) {
+            if (blocklistReverts) {
+                revert("MockUSDC: blocklisted");
+            }
+            return false;
+        }
         require(balanceOf[msg.sender] >= amount, "MockUSDC: insufficient balance");
         balanceOf[msg.sender] -= amount;
         balanceOf[to] += amount;

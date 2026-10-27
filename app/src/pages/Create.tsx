@@ -46,6 +46,36 @@ const KIND_OPTIONS: { kind: LotKind; label: string; hint: string; icon: JSX.Elem
   { kind: LotKind.ERC20,    label: 'Token (ERC-20)',    hint: 'Auction a quantity of any allowlisted ERC-20 token. Fee-on-transfer tokens are not accepted.',        icon: <Coins size={18} /> },
 ]
 
+// -- Image compression helper (B3) --
+async function compressToWebP(file: File, maxPx: number, maxBytes: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height))
+      const w = Math.round(img.width * scale)
+      const h = Math.round(img.height * scale)
+      const canvas = document.createElement('canvas')
+      canvas.width = w; canvas.height = h
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, w, h)
+      let quality = 0.85
+      const tryCompress = () => {
+        canvas.toBlob(blob => {
+          if (!blob) { reject(new Error('Compression failed')); return }
+          if (blob.size <= maxBytes || quality < 0.4) { resolve(blob); return }
+          quality -= 0.1
+          tryCompress()
+        }, 'image/webp', quality)
+      }
+      tryCompress()
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')) }
+    img.src = url
+  })
+}
+
 export default function Create() {
   const { address, chainId } = useAccount()
   const navigate = useNavigate()
@@ -56,7 +86,13 @@ export default function Create() {
   // ── Lot metadata (OFFCHAIN only) ─────────────────────────────────────────
   const [title, setTitle]           = useState('')
   const [description, setDescription] = useState('')
-  const [imageUrl, setImageUrl]     = useState('')
+  const [imageUrl, setImageUrl]       = useState('')
+  const [contactStr, setContactStr]   = useState('')
+  const [deliveryStr, setDeliveryStr] = useState('')
+
+  // ── Image upload state (B3) ─────────────────────
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadError, setUploadError]       = useState('')
 
   // ── On-chain asset (ERC721/ERC1155/ERC20) ──────────────────────────────────
   const [assetAddress, setAssetAddress] = useState('')
@@ -182,7 +218,40 @@ export default function Create() {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   function buildOffchainURI() {
-    return `data:application/json;base64,${btoa(JSON.stringify({ name: title || 'Untitled', description, image: imageUrl }))}`
+    const obj: Record<string, string> = { name: title || 'Untitled', description, image: imageUrl, contact: contactStr }
+    if (deliveryStr) obj.delivery = deliveryStr
+    return `data:application/json;base64,${btoa(JSON.stringify(obj))}`
+  }
+
+  // Ask the server whether Blob storage is connected, instead of relying on a build flag.
+  const [uploadAvailable, setUploadAvailable] = useState(false)
+  useEffect(() => {
+    let live = true
+    fetch('/api/upload').then(r => r.ok ? r.json() : null)
+      .then((d: { configured?: boolean } | null) => { if (live) setUploadAvailable(!!d?.configured) })
+      .catch(() => {})
+    return () => { live = false }
+  }, [])
+
+  async function handleImageUpload(file: File) {
+    setUploadError('')
+    setUploadingImage(true)
+    try {
+      // Compress to WebP max 1200px, max 300KB in browser
+      const compressed = await compressToWebP(file, 1200, 300 * 1024)
+      const resp = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'image/webp' },
+        body: compressed,
+      })
+      const data = await resp.json() as { url?: string; error?: string }
+      if (!resp.ok || !data.url) throw new Error(data.error ?? 'Upload failed')
+      setImageUrl(data.url)
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : 'Upload failed')
+    } finally {
+      setUploadingImage(false)
+    }
   }
 
   function doList(lotURI: string) {
@@ -213,6 +282,11 @@ export default function Create() {
     if (kind === LotKind.ERC20 && !tokenAmount)  { setError('Enter the token amount.'); return }
 
     const lotURI = kind === LotKind.OFFCHAIN ? buildOffchainURI() : (lotUriOverride || 'ipfs://gavel')
+
+    if (kind === LotKind.OFFCHAIN && !contactStr.trim()) {
+      setError('Enter a contact address so the winner can reach you.')
+      return
+    }
 
     if (kind === LotKind.OFFCHAIN) {
       // OFFCHAIN: need USDC approval for the bond
@@ -326,10 +400,45 @@ export default function Create() {
                     className={`${INPUT_CLS} resize-none`} />
                 </div>
                 <div>
-                  <label className={LABEL_CLS}>Image URL <span className="text-ink-3 font-normal">(optional)</span></label>
-                  <input type="url" value={imageUrl} onChange={e => setImageUrl(e.target.value)}
-                    placeholder="https://..."
+                  <label className={LABEL_CLS}>Image <span className="text-ink-3 font-normal">(optional)</span></label>
+                  {/* B3: upload or paste URL */}
+                  <div className="flex flex-col gap-2">
+                    {uploadAvailable ? (
+                      <div className="flex items-center gap-2">
+                        <label className="flex-1 cursor-pointer rounded-input border border-dashed border-line bg-surface-2 px-4 py-2.5 text-sm text-ink-3 hover:border-ink-3 transition-colors flex items-center justify-center gap-2">
+                          {uploadingImage ? 'Uploading...' : imageUrl ? 'Replace image' : 'Upload image (WebP, max 300 KB)'}
+                          <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" disabled={uploadingImage}
+                            onChange={e => { const f = e.target.files?.[0]; if (f) void handleImageUpload(f) }} />
+                        </label>
+                      </div>
+                    ) : (
+                      <input type="url" value={imageUrl} onChange={e => setImageUrl(e.target.value)}
+                        placeholder="https://..."
+                        className={INPUT_CLS} />
+                    )}
+                    {uploadAvailable && (
+                      <input type="url" value={imageUrl} onChange={e => setImageUrl(e.target.value)}
+                        placeholder="or paste an image URL"
+                        className={INPUT_CLS} />
+                    )}
+                    {uploadError && <p className="text-xs text-warn">{uploadError}</p>}
+                    {imageUrl && <p className="text-xs text-good">Image set</p>}
+                  </div>
+                </div>
+                {/* B2: Contact (required) and Delivery (optional) */}
+                <div>
+                  <label className={LABEL_CLS}>Contact <span className="text-warn text-xs">*</span></label>
+                  <input type="text" value={contactStr} onChange={e => setContactStr(e.target.value)}
+                    placeholder="Email, Telegram, or other contact"
                     className={INPUT_CLS} />
+                  <p className={HELPER_CLS}>This is stored publicly on-chain. The winner uses it to arrange delivery.</p>
+                </div>
+                <div>
+                  <label className={LABEL_CLS}>Delivery info <span className="text-ink-3 font-normal">(optional)</span></label>
+                  <input type="text" value={deliveryStr} onChange={e => setDeliveryStr(e.target.value)}
+                    placeholder="Shipping method, location, or conditions"
+                    className={INPUT_CLS} />
+                  <p className={HELPER_CLS}>Stored publicly on-chain.</p>
                 </div>
               </>
             )}

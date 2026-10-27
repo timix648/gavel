@@ -35,17 +35,19 @@ export const EXPLORER = 'https://explorer.arc.io'
 export const USDC_ADDRESS   = '0x3600000000000000000000000000000000000000' as const
 export const USDC_DECIMALS  = 6
 
-/** AuctionHouse v7 mainnet deployment (four lot kinds: OFFCHAIN, ERC721, ERC1155, ERC20) */
-export const AUCTION_HOUSE_ADDRESS = '0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E' as const
+/** AuctionHouse v8 mainnet deployment (four lot kinds: OFFCHAIN, ERC721, ERC1155, ERC20) */
+export const AUCTION_HOUSE_ADDRESS = '0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6' as const
 
 /** AuctionHouse v7 testnet deployment with the audit fixes (verification only; app stays on mainnet) */
 export const AUCTION_HOUSE_TESTNET_ADDRESS = '0x71A4FA23a2B7Fd7b4a11032c44f1e30591b83A04' as const
+/** AuctionHouse v8 testnet deployment (top-up bidding, evidence, contact/delivery) */
+export const AUCTION_HOUSE_V8_TESTNET_ADDRESS = '0x2621EfB0581A02429A0B1276f3391Ee303354A34' as const
 
 /**
  * Block the AuctionHouse was deployed at — used as getLogs fromBlock.
- * AuctionHouse v7 mainnet tx: 0xad6537e1f54b167bdd9b7ed66c35157871a152e3523929518b6ee9eff4500c03
+ * AuctionHouse v8 mainnet tx: 0xe57ba2140d97356597d43894f18f8119288febc62ed92e0558650dd7eb7327d2
  */
-export const DEPLOY_BLOCK = 28065938n
+export const DEPLOY_BLOCK = 28077831n
 
 /**
  * ReputationWriter v3 — wired to AuctionHouse v6.
@@ -53,7 +55,7 @@ export const DEPLOY_BLOCK = 28065938n
  * to enable bond discounts. Sellers must call linkSeller(agentId) after registering
  * their identity on the IdentityRegistry.
  */
-export const REPUTATION_WRITER_ADDRESS = '0x236572D0981dB417638FbD7b4Ac8406AE4d286C6' as const
+export const REPUTATION_WRITER_ADDRESS = '0x98719b8AA176C0bB07a6863880F11be8f5bF1569' as const
 
 /**
  * ERC-8004 registries on Arc Mainnet.
@@ -123,7 +125,7 @@ export const GITHUB_URL = 'https://github.com/timix648/gavel'
  * Override with VITE_WALLETCONNECT_PROJECT_ID env var.
  */
 export const WALLETCONNECT_PROJECT_ID: string =
-  (import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string | undefined) ?? '35feb36938c720a01f77006e662bcf8a'
+  (import.meta.env.VITE_WALLETCONNECT_PROJECT_ID) ?? '35feb36938c720a01f77006e662bcf8a'
 
 export const txUrl   = (hash: string) => `${EXPLORER}/tx/${hash}`
 export const addrUrl = (addr: string) => `${EXPLORER}/address/${addr}`

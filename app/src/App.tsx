@@ -9,6 +9,7 @@ import AuctionRoom from './pages/AuctionRoom'
 import Create from './pages/Create'
 import Me from './pages/Me'
 import Proof from './pages/Proof'
+import Admin from './pages/Admin'
 
 // Landing paths — going TO these from the app is a "back" transition
 const LANDING_PATHS = new Set(['/'])
@@ -44,6 +45,7 @@ const router = createBrowserRouter([
       { path: '/create',   element: <Create /> },
       { path: '/me',       element: <Me /> },
       { path: '/proof',    element: <Proof /> },
+      { path: '/admin',    element: <Admin /> },
       { path: '*',         element: <NotFound /> },
     ],
   },

@@ -89,7 +89,7 @@ export default function Lobby() {
     if (!client) return
     const count = Number(await client.readContract({
       address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'nextLotId', args: [],
-    }) as bigint)
+    }))
     if (count === 0) { setLots([]); setInitialLoaded(true); return }
     if (!gavelAddrRef.current) {
       gavelAddrRef.current = await client.readContract({

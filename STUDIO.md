@@ -583,3 +583,36 @@ Result: **59/59 tests**, Slither clean of medium and high. Studio's own testnet 
 From here on, every code change goes through Studio.
 
 Note: the keeper is retired, since Gavel runs no automated auctions on mainnet. Its `list()` call still uses the v6 signature and would need updating if it were ever revived.
+
+## Turn 26 (27 Oct 2026): Gavel v8, top-up bids, direct refunds, evidence, dispute desk
+Prompt: prompts/turn26.txt, with the spec V8-DESIGN.md as context. Studio built:
+- top-up bidding (bids draw on your Claim balance first; gasless bids sign only the top-up);
+- direct-to-wallet payouts with a Claim-balance fallback;
+- refund reasons and on-chain evidence notes;
+- seller contact and delivery fields;
+- image upload to Vercel Blob;
+- the `/admin` dispute desk and Resend email alerts;
+- reputation shown only for linked sellers, the landing count-up fix, and relayer stats read from chain.
+
+23 new tests (82/82). Studio deployed to testnet and then hit its **daily** usage limit.
+
+### What I caught in my audit (manual fixes 20-24, to be synced back when the daily limit resets)
+20. **Gasless credit check order (low).** The balance check ran before `_bidCore` returned the leader's own bid, so a leader raising their own bid gaslessly was refused. I moved it after `_bidCore`; test 83 covers it.
+21. **Email alerts were fabricated.** The function selectors (`0x52f3f18c`, `0x3e5b3044`) and the `Disputed` event hash were invented; the real ones are `0x87e75b0c`, `0x6adcf77d` and `0xcde8e21e…`. On top of that:
+    - the functions required env vars nobody sets;
+    - the backup scan asked for 345,600 blocks in one call (the RPC caps it at 10,000);
+    - nothing in the app called the alert;
+    - the daily cron was never scheduled.
+
+    I rewrote `api/_chain.js`, `notify-dispute.js` and `cron-disputes.js` with viem and the real ABI, with defaults and 9,000-block chunks. The auction room now calls the alert after a dispute confirms, and `vercel.json` schedules the cron.
+22. **Upload never enabled.** It was gated on an unset build flag and only accepted the old `BLOB_READ_WRITE_TOKEN`. Our store uses OIDC (`BLOB_STORE_ID`). It now checks the server's configuration and accepts both.
+23. **Upload safety.** It accepted any `image/*`, including SVG, which can carry script. Now WebP, JPEG and PNG only, with random filename suffixes so uploads can't collide.
+24. Slither's new items (`reentrancy-no-eth` on the payout fallback; an uninitialised `bool`) were reviewed and are benign: every balance-touching function is `nonReentrant`, and USDC has no receiver hooks.
+
+Testnet run on the fixed code (`0x2621…4A34`):
+- a re-bid took only the 0.20 top-up from the wallet;
+- a stranger's evidence was rejected;
+- the refund reached the buyer's wallet directly with its reason;
+- the house ended at 0.
+
+Mainnet v8 `0xA51A…dEa6` is a Sourcify exact match.
