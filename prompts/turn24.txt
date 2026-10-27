@@ -1,0 +1,14 @@
+Turn 24: sync the audited v7 back into this project. Review only; do not add features.
+
+I audited your turn-23 v7 and fixed four issues outside Studio. The uploaded files are exactly what is now deployed on Arc mainnet (AuctionHouse 0x6102D866Dcb9CFeE929Eb6b2A16468E9d0193A2E, Sourcify exact match). The fixes:
+- C1 (critical): removed releaseBondAfterTimeout. On an OFFCHAIN sale, anyone could call it after 7 days. It set bondReleased and paid only the bond, which made releaseEscrow, refundBuyer and dispute revert, so the escrowed payment was locked forever.
+- H1: the arbiter timeout now runs from the dispute (_disputedAt, plus a disputedAt view), not from settledAt.
+- M1: USYC removed from the Create page allowlist dropdown (it is permissioned, so the vault cannot hold it).
+- L1/L2: LotVault.onERC721Received only accepts Gavel lot NFTs; BondHeld is only emitted for OFFCHAIN lots.
+- Tests 54-59 added; the auction room uses disputedAt for the arbiter-timeout button; chain.ts, relayer and keeper point at the mainnet v7 addresses.
+
+Please:
+1. Review each fix critically. Say if any is wrong or incomplete, or if you see anything else that could lose funds.
+2. Run the full Foundry suite and report the exact count (expect 59/59).
+3. Run typecheck and lint.
+4. Do not deploy anything, and do not change the uploaded files unless a fix is actually wrong. If it is, explain why before changing it.

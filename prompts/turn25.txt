@@ -1,0 +1,2 @@
+Turn 25: apply the keeper fix you flagged in turn 24.
+In keeper/index.ts, remove the branch that calls releaseBondAfterTimeout (that function no longer exists on v7), along with the SEVEN_DAYS constant if nothing else uses it. For OFFCHAIN lots settled more than 7 days ago with escrowState HELD, call releaseEscrow(lotId) instead; it is permissionless and pays the seller payment + bond. Use the compiled ABI. Change nothing else. Run typecheck and lint and report the diff.

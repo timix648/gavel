@@ -1,10 +1,10 @@
 /**
  * Gavel House Keeper
  * ------------------
- * Runs a continuous house auction on AuctionHouse v5.
+ * Runs a continuous house auction on AuctionHouse v7.
  * Each cycle: if no live house lot, list a new one.
  * When a house lot's deadline passes, calls settle().
- * After 7 days, calls releaseBondAfterTimeout() for old lots.
+ * For OFFCHAIN lots sold with escrow still HELD after 7 days, calls releaseEscrow().
  *
  * State tracking: rebuilds the set of active house lots from Listed events
  * at startup (one chunked log scan), then tracks new lots in memory.
@@ -64,7 +64,7 @@ const DURATION      = Number(process.env.HOUSE_LOT_SECS ?? 600)
 const LOW_BAL_WARN  = parseUnits('2', USDC_DECIMALS)
 const APPROVE_AMT   = parseUnits('100', USDC_DECIMALS)
 const MIN_GAS_WEI   = 20_000_000_000n
-const SEVEN_DAYS    = 7 * 24 * 3600
+const DELIVERY_WINDOW_SECS = 7 * 24 * 3600  // must match AuctionHouse.DELIVERY_WINDOW
 
 // Starting chunk size for log scans; halved on range errors (down to MIN_CHUNK)
 const START_CHUNK = 10_000n
@@ -334,13 +334,23 @@ async function cycle() {
           log(`settled lot #${i} — tx: ${hash}`)
           lastAction = `settled #${i} tx:${hash}`
         }
-      } else if (settled && !bondReleased && settledAtN > 0 && (now - settledAtN) >= SEVEN_DAYS) {
-        log(`releaseBondAfterTimeout lot #${i}…`)
-        const data = encodeFunctionData({ abi: AH_ABI, functionName: 'releaseBondAfterTimeout', args: [BigInt(i)] })
-        const hash = await sendTx(data)
-        log(`bond released lot #${i} — tx: ${hash}`)
-        lastAction = `bond released #${i} tx:${hash}`
-        toRemove.push(i)
+      } else if (settled && !bondReleased && settledAtN > 0 && (now - settledAtN) >= DELIVERY_WINDOW_SECS) {
+        // Delivery window has elapsed. Call releaseEscrow() only when escrow is
+        // still HELD (state 1) — DISPUTED lots wait for manual arbitration.
+        const escrowStateVal = await withBackoff(() =>
+          publicClient.readContract({ address: AUCTION_HOUSE, abi: AH_ABI, functionName: 'escrowState', args: [BigInt(i)] })
+        ) as number
+        const ESCROW_HELD = 1
+        if (escrowStateVal === ESCROW_HELD) {
+          log(`releaseEscrow lot #${i} (delivery window elapsed)…`)
+          const data = encodeFunctionData({ abi: AH_ABI, functionName: 'releaseEscrow', args: [BigInt(i)] })
+          const hash = await sendTx(data)
+          log(`escrow released lot #${i} — tx: ${hash}`)
+          lastAction = `escrow released #${i} tx:${hash}`
+          toRemove.push(i)
+        }
+        // If DISPUTED (state 2), leave the lot in activeLotIds and let the
+        // owner resolve it via resolveDispute() or resolveDisputeTimeout().
       } else if (settled && bondReleased) {
         toRemove.push(i)
       }

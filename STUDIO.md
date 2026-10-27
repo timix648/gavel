@@ -574,3 +574,12 @@ It also deployed to testnet. Usage went from 53% to 59% of the 30-day limit.
 19. **Low.** The vault accepted any stray ERC-721 sent with `safeTransferFrom`; it now accepts only Gavel lot NFTs (test 57). `BondHeld` is no longer emitted for bond-free on-chain lots. I also added tests for the escrow confirm and seller-at-fault paths (56), unsolicited ERC-1155 (58), and the winner claiming an ERC-721 to another address (59).
 
 Result: **59/59 tests**, Slither clean of medium and high. Studio's own testnet deploy (`0xe16b…52a8`) still contains C1, so I redeployed the fixed code to testnet (`0x71A4…3A04`) and ran real-chain scenarios before mainnet (PROOF.md).
+
+## Turns 24-25 (27 Oct 2026): audited v7 synced back into Studio
+**Turn 24.** I uploaded the exact contracts, tests and app files deployed on mainnet, including my four audit fixes. Studio reviewed each one and judged all four correct and complete: 59/59 tests pass, typecheck and lint are clean. Its written review is in [docs/turn-24-review.md](docs/turn-24-review.md). It also caught one thing I missed: the old house-lot keeper still called the removed `releaseBondAfterTimeout`.
+
+**Turn 25.** Studio itself fixed the keeper. It now calls `releaseEscrow`, and only when the escrow is HELD, so disputed lots are left for the arbiter. Usage was 59% before turn 24 and 60% after turn 25.
+
+From here on, every code change goes through Studio.
+
+Note: the keeper is retired, since Gavel runs no automated auctions on mainnet. Its `list()` call still uses the v6 signature and would need updating if it were ever revived.
