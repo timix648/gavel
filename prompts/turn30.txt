@@ -1,0 +1,5 @@
+Turn 30: one safety fix in src/pages/Create.tsx. Change nothing else.
+erc20RawAmount uses `parseTokenAmount(tokenAmountStr, tokenDecimals ?? 18)`. Before decimals() loads, "17" becomes 17e18 units, which for EURC (6 decimals) is a trillion times too large, and the wallet would be asked to approve it.
+1. If tokenDecimals is undefined, make erc20RawAmount 0n (no 18 fallback).
+2. In the submit validation, for ERC-20 lots: if tokenDecimals or tokenBalance is undefined, setError("Still reading the token from the chain. Try again in a moment.") and return, before any approval or list call.
+Run typecheck and lint and show the diff.

@@ -22,6 +22,8 @@ import { useLatestBlock } from '../useBlock'
 import { useLogStore } from '../useLogs'
 import { BezelPanel, BezelPlaceholder } from '../components/AuctionPanel'
 import { fmtUsdc, shortAddr } from '../utils'
+import { fmtAssetLabel, setTokenMetaCache, getTokenMetaCache } from '../hooks/useTokenMeta'
+import { LotKind } from '../abi'
 import { StudioWatermark } from '../main'
 
 const AH_ABI_TYPED = AUCTION_HOUSE_ABI as Abi
@@ -696,6 +698,7 @@ export default function Landing() {
 
   // ── Featured lot (ends soonest) ────────────────────────────────────────────────────────────
   const [houseLot, setHouseLot] = useState<{ id: bigint; lot: LotTuple } | null>(null)
+  const [houseLotLabel, setHouseLotLabel] = useState('')
   const [lastHouse, setLastHouse] = useState<{ id: bigint; bid: bigint } | null>(null)
   const lastRunRef  = useRef(0)
   const inFlightRef = useRef(false)
@@ -743,6 +746,30 @@ export default function Landing() {
       }
       setHouseLot(foundLive)
       if (foundLast) setLastHouse(foundLast)
+      // Fetch asset label for the featured lot (if on-chain kind)
+      if (foundLive) {
+        try {
+          const [kindRes, assetRes, amountRes] = await Promise.all([
+            client.readContract({ address: AUCTION_HOUSE_ADDRESS, abi: AH_ABI_TYPED, functionName: 'lotKind', args: [foundLive.id] }),
+            client.readContract({ address: AUCTION_HOUSE_ADDRESS, abi: AH_ABI_TYPED, functionName: 'lotAsset', args: [foundLive.id] }),
+            client.readContract({ address: AUCTION_HOUSE_ADDRESS, abi: AH_ABI_TYPED, functionName: 'lotAmount', args: [foundLive.id] }),
+          ])
+          const kind = Number(kindRes) as LotKind
+          const asset = assetRes as string
+          const amount = amountRes as bigint
+          if (kind === LotKind.ERC20 && asset && !getTokenMetaCache(asset)) {
+            const [dRes, sRes] = await Promise.all([
+              client.readContract({ address: asset as `0x${string}`, abi: [{ name: 'decimals', type: 'function', inputs: [], outputs: [{ name: '', type: 'uint8' }], stateMutability: 'view' }] as const, functionName: 'decimals', args: [] }),
+              client.readContract({ address: asset as `0x${string}`, abi: [{ name: 'symbol', type: 'function', inputs: [], outputs: [{ name: '', type: 'string' }], stateMutability: 'view' }] as const, functionName: 'symbol', args: [] }),
+            ])
+            setTokenMetaCache(asset, Number(dRes), sRes)
+          }
+          const meta = getTokenMetaCache(asset)
+          setHouseLotLabel(fmtAssetLabel(kind, foundLive.lot.tokenId, amount, asset, meta?.decimals, meta?.symbol))
+        } catch {}
+      } else {
+        setHouseLotLabel('')
+      }
     } catch {
       lastRunRef.current = Date.now() + 4000 // rate limited: wait ~8 s before the next try
     } finally {
@@ -844,6 +871,7 @@ export default function Landing() {
                     lot={houseLot.lot}
                     secs={secs}
                     extended={extended}
+                    assetLabel={houseLotLabel || undefined}
                   />
                 ) : (
                   <BezelPlaceholder

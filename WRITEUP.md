@@ -42,13 +42,28 @@ While testing with two real wallets, I watched a live testnet lot (#115) where *
 - **No zero bids**: a 0-USDC bid on a 0-reserve lot would have won for free and blocked cancellation.
 - **A winner contract cannot block settlement**: the vault uses `transferFrom` instead of `safeTransferFrom`, so a winning contract that rejects NFTs cannot make `settle()` revert forever and lock the seller's money.
 
-Each fix has a test, and a 37th test replays lot #115's exact numbers and checks the contract ends holding zero. Slither reported nothing medium or high. Then Arc Studio reviewed the three fixes independently, judged them correct, flagged the owner's cancel power as a known centralisation point, ran 37/37 tests and redeployed. Finally the deploy script re-ran the same 37 tests before touching mainnet.
+Each fix has a test, and a dedicated test replays lot #115's exact numbers and checks the contract ends holding zero. Slither reported nothing medium or high. Then Arc Studio reviewed the three fixes independently, judged them correct, flagged the owner's cancel power as a known centralisation point, ran 37/37 tests and redeployed. Finally the deploy script re-ran the same 37 tests before touching mainnet.
 
 What it does *not* claim: this is an internal review plus a Studio review, not a professional audit. A seller can still shill from a second wallet; no auction contract can stop that, and the bid history is public. If a seller never delivers, the winner recovers the bond (equal to the reserve), not the full price. That is why v1 targets digital and creator lots.
 
+## What changed after real people used it (v7 and v8)
+
+Real trading exposed real friction, and each fix went through Arc Studio:
+- **Any Arc asset (v7).** EURC, ERC-8004 agent identities, NFTs and ERC-1155 positions are escrowed at listing, so delivery is trustless.
+- **Off-chain payments held in escrow (v7)** instead of being paid at the hammer.
+- **Outbid with just the extra (v8).** Bids reuse your returned balance.
+- **Payouts straight to wallets** with a safe fallback, **refunds with reasons**, **on-chain evidence**, a private **dispute desk** with **email alerts**, seller contact and photo upload.
+
+My audits caught:
+- a critical escrow lockup in Studio's v7;
+- invented function selectors in Studio's v8 alert code;
+- a token-amount display bug found by a real user.
+
+All were fixed and logged.
+
 ## How I built it in Arc Studio
 
-All contracts, tests, the frontend and the relayer were built in one Arc Studio project over 22 turns between 17 and 25 October. [STUDIO.md](STUDIO.md) records every turn: the prompt, what Studio produced, what it got wrong, and what I corrected.
+All contracts, tests, the frontend and the relayer were built in one Arc Studio project over 29 turns between 17 and 28 October. [STUDIO.md](STUDIO.md) records every turn: the prompt, what Studio produced, what it got wrong, and what I corrected.
 
 The pattern that worked was **Studio builds, I verify against the chain, Studio fixes**:
 
@@ -67,7 +82,7 @@ I was honest in STUDIO.md about where I worked outside Studio. Twelve fixes were
 
 Deploying Gavel cost 0.082 USDC in gas. There are no automated or house auctions: every lot on mainnet is listed by a real seller and bid on by real people. [PROOF.md](PROOF.md) lists every contract and transaction hash, and the live /proof page reads every market event straight from chain, with no wallet needed, totalling USDC moved, bids placed, distinct bidders and lots settled.
 
-_Mainnet activity summary (fill from /proof after the live event):_ _N_ lots, _N_ bids from _N_ distinct wallets, _X_ USDC moved, _N_ gasless bids. _Disclosure: I sent $_ to _N_ friends so they could join the live event._
+First real trading session (28 Oct, audited on-chain): 4 lots, **20 bids (13 gasless) from 5 wallets, 583 USDC of bid volume**. Every one of the 488 USDC that went in came back out to the right wallets; the contract ended at 0. Some participants received USDC from me for testing, and that is disclosed in PROOF.md.
 
 ## Why it fits what Arc wants
 
@@ -86,4 +101,4 @@ _Mainnet activity summary (fill from /proof after the live event):_ _N_ lots, _N
 
 ## Stack
 
-Solidity 0.8.28 with Foundry (59 tests), OpenZeppelin, React + Vite + Tailwind, wagmi/viem, RainbowKit for any browser-extension EVM wallet, Motion, Bun for the relayer, and EIP-3009 USDC, Arc Memo and ERC-8004 on Arc mainnet.
+Solidity 0.8.28 with Foundry (83 tests), OpenZeppelin, React + Vite + Tailwind, wagmi/viem, RainbowKit for any browser-extension EVM wallet, Motion, Bun for the relayer, and EIP-3009 USDC, Arc Memo and ERC-8004 on Arc mainnet.

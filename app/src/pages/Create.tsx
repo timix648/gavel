@@ -13,6 +13,7 @@ import { useWithGas } from '../txGas'
 import { AUCTION_HOUSE_ABI, REPUTATION_WRITER_ABI, IDENTITY_REGISTRY_ABI, ERC721_ABI, ERC1155_ABI, LotKind } from '../abi'
 import { fmtUsdc, parseUsdc, parseOnchainError } from '../utils'
 import LotCard from '../components/LotCard'
+import { useTokenMeta, parseTokenAmount, fmtTokenAmount } from '../hooks/useTokenMeta'
 
 // ── Duration presets ─────────────────────────────────────────────────────────
 const DURATION_PRESETS = [
@@ -97,8 +98,7 @@ export default function Create() {
   // ── On-chain asset (ERC721/ERC1155/ERC20) ──────────────────────────────────
   const [assetAddress, setAssetAddress] = useState('')
   const [tokenId, setTokenId]           = useState('')   // ERC721/ERC1155
-  const [tokenAmount, setTokenAmount]   = useState('')   // ERC1155/ERC20
-  const [lotUriOverride, setLotUriOverride] = useState('') // optional IPFS URI for on-chain lots
+  const [tokenAmountStr, setTokenAmountStr] = useState('') // human-units: '17' means 17 EURC
 
   // ── Auction params ───────────────────────────────────────────────────────
   const [reserveStr, setReserveStr]     = useState('1.00')
@@ -110,6 +110,20 @@ export default function Create() {
 
   // ── Known ERC20 asset selection ──────────────────────────────────────────
   const knownAsset = KNOWN_ERC20_ASSETS.find(a => a.address.toLowerCase() === assetAddress.toLowerCase())
+
+  // ERC-20 token metadata (decimals, symbol, seller balance)
+  const { decimals: tokenDecimals, symbol: tokenSymbol, balance: tokenBalance } =
+    useTokenMeta(kind === LotKind.ERC20 ? assetAddress : undefined, address)
+
+  // Computed raw amounts from human-unit strings
+  // Guard: if decimals haven't loaded yet, keep raw amount at 0n so no approval
+  // can be triggered with the wrong scale (e.g. 17e18 instead of 17e6 for EURC).
+  const erc20RawAmount = kind === LotKind.ERC20 && tokenDecimals !== undefined
+    ? parseTokenAmount(tokenAmountStr, tokenDecimals)
+    : 0n
+  const erc1155RawAmount = kind === LotKind.ERC1155
+    ? (tokenAmountStr.trim() && /^\d+$/.test(tokenAmountStr.trim()) ? BigInt(tokenAmountStr.trim()) : 0n)
+    : 0n
 
   const reserve   = parseUsdc(reserveStr)
   const increment = parseUsdc(incrementStr)
@@ -258,7 +272,7 @@ export default function Create() {
     setStep('listing')
     const assetAddr = (kind !== LotKind.OFFCHAIN && assetAddress) ? assetAddress as `0x${string}` : '0x0000000000000000000000000000000000000000' as `0x${string}`
     const tidBig    = (kind === LotKind.ERC721 || kind === LotKind.ERC1155) && tokenId ? BigInt(tokenId) : 0n
-    const amtBig    = (kind === LotKind.ERC1155 || kind === LotKind.ERC20) && tokenAmount ? BigInt(tokenAmount) : 0n
+    const amtBig    = kind === LotKind.ERC20 ? erc20RawAmount : kind === LotKind.ERC1155 ? erc1155RawAmount : 0n
     void withGas('list', {
       address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'list',
       args: [kind, assetAddr, tidBig, amtBig, lotURI, reserve, BigInt(durationSecs), increment],
@@ -278,10 +292,21 @@ export default function Create() {
       if (!assetAddress) { setError('Enter the asset contract address.'); return }
     }
     if (kind === LotKind.ERC721 && !tokenId) { setError('Enter the token ID.'); return }
-    if (kind === LotKind.ERC1155 && (!tokenId || !tokenAmount)) { setError('Enter the token ID and amount.'); return }
-    if (kind === LotKind.ERC20 && !tokenAmount)  { setError('Enter the token amount.'); return }
+    if (kind === LotKind.ERC1155 && (!tokenId || !tokenAmountStr.trim())) { setError('Enter the token ID and amount.'); return }
+    if (kind === LotKind.ERC1155 && !/^\d+$/.test(tokenAmountStr.trim())) { setError('Amount must be a whole number.'); return }
+    if (kind === LotKind.ERC1155 && erc1155RawAmount <= 0n) { setError('Amount must be greater than 0.'); return }
+    if (kind === LotKind.ERC20 && !tokenAmountStr.trim()) { setError('Enter the token amount.'); return }
+    if (kind === LotKind.ERC20 && (tokenDecimals === undefined || tokenBalance === undefined)) {
+      setError('Still reading the token from the chain. Try again in a moment.'); return
+    }
+    if (kind === LotKind.ERC20 && erc20RawAmount <= 0n) { setError('Enter a valid amount greater than 0.'); return }
+    if (kind === LotKind.ERC20 && tokenBalance !== undefined && erc20RawAmount > tokenBalance) {
+      const sym = tokenSymbol ?? 'tokens'
+      const have = tokenDecimals !== undefined ? fmtTokenAmount(tokenBalance, tokenDecimals, sym) : tokenBalance.toString()
+      setError(`Insufficient balance. You have ${have}.`); return
+    }
 
-    const lotURI = kind === LotKind.OFFCHAIN ? buildOffchainURI() : (lotUriOverride || 'ipfs://gavel')
+    const lotURI = kind === LotKind.OFFCHAIN ? buildOffchainURI() : 'ipfs://gavel'
 
     if (kind === LotKind.OFFCHAIN && !contactStr.trim()) {
       setError('Enter a contact address so the winner can reach you.')
@@ -302,11 +327,10 @@ export default function Create() {
       setPendingLotURI(lotURI); setStep('approving-asset')
       void withGas('approve-erc1155', { address: assetAddress as `0x${string}`, abi: ERC1155_ABI, functionName: 'setApprovalForAll', args: [AUCTION_HOUSE_ADDRESS, true], chainId: CHAIN_ID }).then(approveERC1155Tx).catch(onGasError)
     } else {
-      // ERC-20: approve the exact amount
-      const amtBig = tokenAmount ? BigInt(tokenAmount) : 0n
-      if ((erc20AssetAllowance ?? 0n) < amtBig) {
+      // ERC-20: approve the exact amount (already in raw units)
+      if ((erc20AssetAllowance ?? 0n) < erc20RawAmount) {
         setPendingLotURI(lotURI); setStep('approving-asset')
-        void withGas('approve-asset', { address: assetAddress as `0x${string}`, abi: erc20Abi, functionName: 'approve', args: [AUCTION_HOUSE_ADDRESS, amtBig], chainId: CHAIN_ID }).then(approveAssetTx).catch(onGasError)
+        void withGas('approve-asset', { address: assetAddress as `0x${string}`, abi: erc20Abi, functionName: 'approve', args: [AUCTION_HOUSE_ADDRESS, erc20RawAmount], chainId: CHAIN_ID }).then(approveAssetTx).catch(onGasError)
       } else { doList(lotURI) }
     }
   }
@@ -487,27 +511,44 @@ export default function Create() {
 
                 {(kind === LotKind.ERC1155 || kind === LotKind.ERC20) && (
                   <div>
-                    <label className={LABEL_CLS}>
-                      {kind === LotKind.ERC20 ? 'Amount (in token smallest unit)' : 'Amount (quantity)'}
-                    </label>
-                    <input type="number" min="1" value={tokenAmount} onChange={e => setTokenAmount(e.target.value)}
-                      placeholder="1"
-                      className={INPUT_CLS} />
-                    <p className={HELPER_CLS}>
-                      {kind === LotKind.ERC20
-                        ? 'Enter the raw token amount (e.g. 1000000 for 1 USDC with 6 decimals).'
-                        : 'Number of tokens to include in the lot.'}
-                    </p>
+                    <label className={LABEL_CLS}>Amount</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={tokenAmountStr}
+                      onChange={e => setTokenAmountStr(e.target.value)}
+                      placeholder={kind === LotKind.ERC20 ? '17' : '1'}
+                      className={INPUT_CLS}
+                    />
+                    {/* Confirmation line */}
+                    {tokenAmountStr.trim() && kind === LotKind.ERC20 && (
+                      <p className={`${HELPER_CLS} ${erc20RawAmount > 0n ? 'text-good' : 'text-warn'}`}>
+                        {erc20RawAmount > 0n && tokenDecimals !== undefined && tokenSymbol
+                          ? `You are auctioning ${fmtTokenAmount(erc20RawAmount, tokenDecimals, tokenSymbol)}.`
+                          : tokenDecimals === undefined
+                          ? 'Enter a valid asset address to load decimals.'
+                          : 'Enter a valid amount.'}
+                      </p>
+                    )}
+                    {tokenAmountStr.trim() && kind === LotKind.ERC1155 && (
+                      <p className={`${HELPER_CLS} ${erc1155RawAmount > 0n ? 'text-good' : 'text-warn'}`}>
+                        {erc1155RawAmount > 0n
+                          ? `You are auctioning ${erc1155RawAmount.toString()} token(s).`
+                          : 'Amount must be a whole number greater than 0.'}
+                      </p>
+                    )}
+                    {/* Balance check for ERC-20 */}
+                    {kind === LotKind.ERC20 && erc20RawAmount > 0n && tokenBalance !== undefined && erc20RawAmount > tokenBalance && tokenDecimals !== undefined && tokenSymbol && (
+                      <p className="text-xs text-warn mt-1">
+                        Insufficient balance. You have {fmtTokenAmount(tokenBalance, tokenDecimals, tokenSymbol)}.
+                      </p>
+                    )}
+                    {kind === LotKind.ERC20 && tokenBalance !== undefined && tokenDecimals !== undefined && tokenSymbol && (
+                      <p className={HELPER_CLS}>Balance: {fmtTokenAmount(tokenBalance, tokenDecimals, tokenSymbol)}</p>
+                    )}
                   </div>
                 )}
 
-                <div>
-                  <label className={LABEL_CLS}>Lot URI <span className="text-ink-3 font-normal">(optional)</span></label>
-                  <input type="text" value={lotUriOverride} onChange={e => setLotUriOverride(e.target.value)}
-                    placeholder="ipfs://... or data:application/json..."
-                    className={INPUT_CLS} />
-                  <p className={HELPER_CLS}>Metadata URI shown in the auction room. Leave empty for a generic title.</p>
-                </div>
               </>
             )}
 

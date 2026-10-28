@@ -1,0 +1,11 @@
+Turn 29: fix token amounts in the UI. A real mainnet user typed "17" meaning 17 EURC, but the field takes raw smallest units, so the lot escrowed 0.000017 EURC and sold for $20. The contract is fine; do not touch the contracts.
+
+1. Create page, ERC-20 and ERC-1155 lots:
+   - Replace "Amount (in token smallest unit)" with "Amount", typed in normal units (17 means 17 EURC).
+   - For ERC-20, read decimals() and symbol() from the token on-chain and convert with parseUnits. ERC-1155 amounts are whole numbers, so validate them as integers > 0.
+   - Show a live confirmation line: "You are auctioning 17 EURC" (formatUnits back from the raw value).
+   - Read the seller's balanceOf and block listing with a clear message if it's insufficient.
+   - Remove the "Lot URI" input entirely. lotURI is always built from title, description, image, contact and delivery as the data:application/json URI.
+2. Everywhere an on-chain lot is displayed (LotCard, Lobby, Landing featured lot, AuctionRoom header and asset box, Me page): show the amount formatted with the token's decimals and symbol (for example "17 EURC"), never the raw lotAmount. Cache decimals/symbol per token address. ERC-721 shows "NFT #<id>". ERC-1155 shows "<amount> × #<id>".
+3. AuctionRoom: for ERC-20 lots, show "You are bidding for 17 EURC" right above the bid button.
+4. Typecheck and lint. Report the diff of every file changed. Do not deploy.

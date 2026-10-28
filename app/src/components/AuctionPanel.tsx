@@ -25,11 +25,13 @@ export interface AuctionPanelProps {
   compact?: boolean
   /** Only for compact: navigate to lot page on CTA click */
   className?: string
+  /** Formatted asset label ('17 EURC', 'NFT #3') for on-chain lots */
+  assetLabel?: string
 }
 
 /** A compact, read-only live panel for the landing hero and /lots strip. */
 export function CompactPanel({
-  lotId, lot, secs, extended, className = '',
+  lotId, lot, secs, extended, className = '', assetLabel,
 }: AuctionPanelProps) {
   const isLive    = !lot.settled && !lot.cancelled && secs > 0
   const urgent    = isLive && secs < 30
@@ -98,6 +100,11 @@ export function CompactPanel({
           </p>
         )}
 
+        {/* Asset label for on-chain lots */}
+        {assetLabel && (
+          <p className="text-xs text-ink-3">{assetLabel}</p>
+        )}
+
         {/* CTA */}
         <div className="flex items-center justify-between pt-1">
           <span className="text-xs text-ink-3 font-mono">Min step {fmtUsdc(lot.minIncrement)}</span>
@@ -112,7 +119,7 @@ export function CompactPanel({
 
 /** Hero bezel wrapper for the landing page — adds the nested bezel frame. */
 export function BezelPanel({
-  lotId, lot, secs, extended,
+  lotId, lot, secs, extended, assetLabel,
 }: AuctionPanelProps) {
   const isLive = !lot.settled && !lot.cancelled && secs > 0
   return (
@@ -120,7 +127,7 @@ export function BezelPanel({
       {/* Inset top highlight */}
       <div className="relative rounded-[16px] bg-surface overflow-hidden">
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-ink/10 to-transparent pointer-events-none" />
-        <CompactPanel lotId={lotId} lot={lot} secs={secs} extended={extended} />
+        <CompactPanel lotId={lotId} lot={lot} secs={secs} extended={extended} assetLabel={assetLabel} />
       </div>
     </div>
   )

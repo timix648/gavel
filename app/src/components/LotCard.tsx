@@ -15,11 +15,13 @@ interface Props {
   kind?: LotKind
   /** Create-page preview: show this duration static, no countdown, "Preview" tag, not a link. */
   previewDurationSecs?: number
+  /** Formatted asset label: '17 EURC', 'NFT #3', '5 × #0' — shown for on-chain lots. */
+  assetLabel?: string
 }
 
 function getClientTimeSec() { return Date.now() / 1000 }
 
-export default function LotCard({ lotId, lot, title, wide, hasRelayedBid, kind, previewDurationSecs }: Props) {
+export default function LotCard({ lotId, lot, title, wide, hasRelayedBid, kind, previewDurationSecs, assetLabel }: Props) {
   const isPreview = previewDurationSecs !== undefined
   // Chain time, interpolated between blocks. Before the first block arrives we fall back
   // to the PC clock once, so the card still renders something sensible.
@@ -67,6 +69,9 @@ export default function LotCard({ lotId, lot, title, wide, hasRelayedBid, kind, 
               )}
             </div>
           </div>
+          {assetLabel && (
+            <p className="text-xs text-ink-3 truncate -mt-1.5">{assetLabel}</p>
+          )}
 
           {/* Status tag */}
           {isPreview ? (

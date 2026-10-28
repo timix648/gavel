@@ -23,6 +23,7 @@ import { keepPreviousData } from '@tanstack/react-query'
 import { useWithGas } from '../txGas'
 import { useLogStore } from '../useLogs'
 import EvidencePanel from '../components/EvidencePanel'
+import { useTokenMeta, fmtAssetLabel } from '../hooks/useTokenMeta'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function splitSig(sig: Hex) {
@@ -461,7 +462,7 @@ export default function AuctionRoom() {
     address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'lotKind',
     args: [lotId], chainId: CHAIN_ID, query: { enabled: !!lot },
   })
-  const { data: rawLotAsset, refetch: refetchLotAsset } = useReadContract({
+  const { data: rawLotAsset } = useReadContract({
     address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'lotAsset',
     args: [lotId], chainId: CHAIN_ID, query: { enabled: !!lot },
   })
@@ -478,7 +479,13 @@ export default function AuctionRoom() {
     args: [lotId], chainId: CHAIN_ID, query: { enabled: !!lot },
   })
 
-  const lotAmount    = typeof rawLotAmount === 'bigint' ? rawLotAmount : 0n
+  const lotAmountRaw = typeof rawLotAmount === 'bigint' ? rawLotAmount : 0n
+
+  // ── Token metadata for ERC-20 lots ──────────────────────────────────────────
+  // Use rawLotKind (=== 3 means ERC-20) so this hook call is above the early return.
+  const { decimals: assetDecimals, symbol: assetSymbol } = useTokenMeta(
+    (rawLotKind as number | undefined) === 3 ? (rawLotAsset as string | undefined) : undefined
+  )
 
   // ── v7: claimLotAsset ─────────────────────────────────────────────────────
   const [claimAssetTo, setClaimAssetTo] = useState('')
@@ -558,6 +565,7 @@ export default function AuctionRoom() {
   const escState      = rawEscrowState !== undefined ? (rawEscrowState as number) as EscrowState : EscrowState.NONE
   const assetAlreadyClaimed = rawAssetClaimed === true
   const isOnchainKind = lotKind !== LotKind.OFFCHAIN
+  const assetLabel    = lot ? fmtAssetLabel(lotKind, lot.tokenId, lotAmountRaw, rawLotAsset as string ?? '', assetDecimals, assetSymbol) : ''
   const isSold        = lot.settled && lot.highestBidder !== NULL_ADDR
   const isUnsold      = (lot.settled || lot.cancelled) && lot.highestBidder === NULL_ADDR
   // Winner can claim asset for ERC721/ERC1155/ERC20 lots; seller can reclaim unsold
@@ -738,6 +746,12 @@ export default function AuctionRoom() {
               {/* Bid controls */}
               {isLive && !isSellerView && !(isWinner && bidStep === 'idle') && (
                 <div className="space-y-3 pt-1">
+                  {/* ERC-20: show what the winner receives */}
+                  {isOnchainKind && lotKind === LotKind.ERC20 && assetLabel && (
+                    <p className="text-xs text-ink-3">
+                      You are bidding for <span className="font-semibold text-ink">{assetLabel}</span>.
+                    </p>
+                  )}
                   <button
                     onClick={handleBid}
                     disabled={isBidBusy}
@@ -1076,6 +1090,11 @@ export default function AuctionRoom() {
                 <a href={addrUrl(lotAsset)} target="_blank" rel="noopener noreferrer"
                   className="hover:text-ink transition-colors">{shortAddr(lotAsset)}</a>
                 {isUsycAsset && <span className="ml-2 text-warn">USYC (permissioned)</span>}
+              </p>
+            )}
+            {isOnchainKind && assetLabel && (
+              <p className="text-sm text-ink-2 mt-1">
+                {assetLabel}
               </p>
             )}
           </div>

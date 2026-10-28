@@ -12,6 +12,8 @@ import type { Abi } from 'viem'
 const AH_ABI_TYPED = AUCTION_HOUSE_ABI as Abi
 import { useLatestBlock, useChainNow } from '../useBlock'
 import LotCard from '../components/LotCard'
+import { fmtAssetLabel, setTokenMetaCache, getTokenMetaCache } from '../hooks/useTokenMeta'
+import { LotKind } from '../abi'
 import { fmtUsdc, shortAddr } from '../utils'
 import { useLogStore } from '../useLogs'
 
@@ -19,7 +21,7 @@ const LOBBY_WINDOW = 24
 /** Minimum gap between lobby refreshes, whatever the block rate. */
 const LOBBY_REFRESH_MS = 4000
 
-interface LotEntry { lotId: bigint; lot: LotTuple; title: string; hasRelayedBid: boolean }
+interface LotEntry { lotId: bigint; lot: LotTuple; title: string; hasRelayedBid: boolean; assetLabel: string }
 
 function getClientTimeSec() { return Date.now() / 1000 }
 
@@ -157,6 +159,59 @@ export default function Lobby() {
       } catch {}
     }
 
+    // Fetch lotKind, lotAsset, lotAmount for all lots (for assetLabel)
+    const kindCalls = ids.map(id => ({
+      address: AUCTION_HOUSE_ADDRESS as `0x${string}`,
+      abi: AH_ABI_TYPED,
+      functionName: 'lotKind' as const,
+      args: [id] as [bigint],
+    }))
+    const assetCalls = ids.map(id => ({
+      address: AUCTION_HOUSE_ADDRESS as `0x${string}`,
+      abi: AH_ABI_TYPED,
+      functionName: 'lotAsset' as const,
+      args: [id] as [bigint],
+    }))
+    const amountCalls = ids.map(id => ({
+      address: AUCTION_HOUSE_ADDRESS as `0x${string}`,
+      abi: AH_ABI_TYPED,
+      functionName: 'lotAmount' as const,
+      args: [id] as [bigint],
+    }))
+    const [kindResults, assetResults, amountResults] = await Promise.all([
+      client.multicall({ contracts: kindCalls, allowFailure: true }),
+      client.multicall({ contracts: assetCalls, allowFailure: true }),
+      client.multicall({ contracts: amountCalls, allowFailure: true }),
+    ])
+
+    // Fetch decimals/symbol for ERC-20 assets not yet in cache
+    const ERC20_META_ABI = [{
+      name: 'decimals', type: 'function', inputs: [], outputs: [{ name: '', type: 'uint8' }], stateMutability: 'view'
+    }, {
+      name: 'symbol', type: 'function', inputs: [], outputs: [{ name: '', type: 'string' }], stateMutability: 'view'
+    }] as const
+    const erc20Addrs: string[] = []
+    for (let i = 0; i < ids.length; i++) {
+      const kind = kindResults[i]?.status === 'success' ? Number(kindResults[i].result) : 0
+      const asset = assetResults[i]?.status === 'success' ? assetResults[i].result as string : ''
+      if (kind === 3 && asset && !getTokenMetaCache(asset)) erc20Addrs.push(asset)
+    }
+    if (erc20Addrs.length > 0) {
+      const unique = [...new Set(erc20Addrs)]
+      const metaCalls = unique.flatMap(a => [
+        { address: a as `0x${string}`, abi: ERC20_META_ABI, functionName: 'decimals' as const, args: [] as [] },
+        { address: a as `0x${string}`, abi: ERC20_META_ABI, functionName: 'symbol' as const, args: [] as [] },
+      ])
+      try {
+        const metaRes = await client.multicall({ contracts: metaCalls, allowFailure: true })
+        for (let j = 0; j < unique.length; j++) {
+          const d = metaRes[j * 2]?.status === 'success' ? Number(metaRes[j * 2].result) : undefined
+          const s = metaRes[j * 2 + 1]?.status === 'success' ? metaRes[j * 2 + 1].result as string : undefined
+          if (d !== undefined && s !== undefined) setTokenMetaCache(unique[j], d, s)
+        }
+      } catch {}
+    }
+
     const next = new Map<string, LotEntry>(prevLotsRef.current)
     for (let i = 0; i < rawLots.length; i++) {
       const lot = rawLots[i]
@@ -165,7 +220,12 @@ export default function Lobby() {
       if (!lot) continue
       const cacheKey = `${gavelAddr}:${lot.tokenId}`
       const title = uriTitleCache.get(cacheKey) ?? `Lot #${lotId}`
-      next.set(key, { lotId, lot, title, hasRelayedBid: relayedLotIds.has(key) })
+      const kind = kindResults[i]?.status === 'success' ? Number(kindResults[i].result) as LotKind : LotKind.OFFCHAIN
+      const asset = assetResults[i]?.status === 'success' ? assetResults[i].result as string : ''
+      const amount = amountResults[i]?.status === 'success' ? amountResults[i].result as bigint : 0n
+      const meta = getTokenMetaCache(asset)
+      const assetLabel = fmtAssetLabel(kind, lot.tokenId, amount, asset, meta?.decimals, meta?.symbol)
+      next.set(key, { lotId, lot, title, hasRelayedBid: relayedLotIds.has(key), assetLabel })
     }
     const windowKeys = new Set(ids.map(id => id.toString()))
     for (const k of next.keys()) {
@@ -231,6 +291,7 @@ export default function Lobby() {
                   lotId={e.lotId} lot={e.lot} title={e.title}
                   wide={idx === 0}
                   hasRelayedBid={e.hasRelayedBid}
+                  assetLabel={e.assetLabel || undefined}
                 />
               ))}
             </div>

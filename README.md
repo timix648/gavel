@@ -37,7 +37,8 @@ bidder's USDC is released in the same transaction, and at the hammer the lot and
 
 1. [The problem](#the-problem)
 2. [What Gavel does](#what-gavel-does)
-   - [What you can auction (v7)](#what-you-can-auction-v7)
+   - [What you can auction](#what-you-can-auction)
+   - [Built for real bidders (v8)](#built-for-real-bidders-v8)
 3. [Why this needs Arc, and only Arc](#why-this-needs-arc-and-only-arc)
 4. [Life of a lot, step by step](#life-of-a-lot-step-by-step)
 5. [Architecture](#architecture)
@@ -94,7 +95,7 @@ Gavel is a live English auction house where every action is a USDC transaction o
 
 Every lot on mainnet is listed by a real seller. There are no automated or house auctions.
 
-## What you can auction (v7)
+## What you can auction
 
 | Kind | Examples on Arc mainnet | How delivery works | Can either side refuse? |
 |---|---|---|---|
@@ -104,6 +105,17 @@ Every lot on mainnet is listed by a real seller. There are no automated or house
 | **Off-chain item or service** | A code review, a logo, a physical good | The seller posts a bond. The winning bid is **held in escrow** until the winner confirms delivery, the seller refunds, or 7 days pass with no dispute. | The buyer cannot stall: after 7 days anyone can release the escrow. The seller cannot keep the money without delivering: a dispute goes to the owner, the buyer gets payment + bond if the seller is at fault, and if nobody rules within 14 days the payment splits 50/50. |
 
 Only allowlisted token contracts can be listed. A hostile token could accept a deposit and then refuse to hand it to the winner, so each contract is reviewed (no fee-on-transfer, no rebasing, no surprising hooks) before the owner adds it. USYC exists on Arc but is permissioned: the vault itself would need to be an eligible holder, so it is not allowlisted. Claims go to any address the winner chooses, so a blocklisted or ineligible wallet can redirect delivery.
+
+## Built for real bidders (v8)
+
+| Feature | What it does |
+|---|---|
+| **Outbid with just the extra** | When you are outbid, your bid comes back to your balance. Bidding again reuses it, so you only add the difference ("Outbid with $0.25 extra"). This works for gasless bids too: you sign only the extra. |
+| **Money lands in your wallet** | Escrow releases, refunds and dispute rulings send USDC straight to the recipient's wallet. If a wallet can't receive (for example, a blocklisted address), the money waits safely in their Gavel balance instead. |
+| **Refunds with a reason** | A seller who can't deliver refunds the buyer in one click with a reason stored on-chain ("Item out of stock"). |
+| **Evidence and a dispute desk** | Buyer and seller can each post short evidence notes or links on-chain. Disputes appear on a private `/admin` page for the owner, with both sides' evidence and one-click rulings. |
+| **Dispute email alerts** | When a dispute opens, the owner gets an email. The server checks the chain first, so alerts can't be faked, and a daily scan catches any that were missed. |
+| **Seller contact and photos** | Off-chain lots carry the seller's contact and delivery instructions, shown to the winner. Lot photos upload straight from your device. |
 
 ## Why this needs Arc, and only Arc
 
@@ -209,8 +221,8 @@ The auction engine. One contract holds every lot, every bid and every balance.
 | Function | Caller | What it does |
 |---|---|---|
 | `list(kind, asset, id, amount, lotURI, reserve, durationSecs, minIncrement)` | seller | Validates limits (reserve <= `maxReserve`, step > 0, duration > 0, on-chain assets must be allowlisted). OFFCHAIN: pulls the bond and mints a lot NFT into `LotVault`. ERC721/ERC1155/ERC20: moves the asset into `LotVault` and checks it arrived exactly (ownerOf / balance increase). Emits `Listed`. |
-| `bid(lotId, amount)` | anyone except the seller | Runs `_bidCore`, then pulls `amount` USDC from the caller with `transferFrom`. |
-| `bidWithAuthorization(lotId, amount, from, validAfter, validBefore, salt, v, r, s)` | relayer, for a signer | Computes the bound nonce, runs `_bidCore` for `from`, then pulls `amount` with `USDC.receiveWithAuthorization`. Emits `RelayedBid`. |
+| `bid(lotId, amount)` | anyone except the seller | Runs `_bidCore`, uses the caller's Gavel balance first (`CreditUsed`), then pulls only the rest with `transferFrom`. |
+| `bidWithAuthorization(lotId, amount, topUp, from, validAfter, validBefore, salt, v, r, s)` | relayer, for a signer | `credit = amount - topUp` comes from the signer's Gavel balance; only `topUp` is pulled with `USDC.receiveWithAuthorization`. The nonce binds lot, amount, top-up, chain and contract. Emits `RelayedBid`. |
 | `settle(lotId)` | anyone, after the deadline | Marks the lot settled. If sold: credits the seller with the winning bid, moves the NFT to the winner, holds the bond. If unsold: credits the bond back and returns the NFT to the seller. Emits `Hammer` and `BondHeld`, or `Unsold`. |
 | `confirmDelivery(lotId)` | winner | Releases the bond to the seller. |
 | `releaseBondAfterTimeout(lotId)` | anyone, 7 days after settle | Releases the bond to the seller if no dispute was raised. |
@@ -221,7 +233,8 @@ The auction engine. One contract holds every lot, every bid and every balance.
 | `cancel(lotId)` | seller or owner, while there are no bids | Credits the bond back; the seller reclaims the asset with `claimLotAsset`. |
 | `claimLotAsset(lotId, to)` | winner (sold) or seller (unsold/cancelled) | Sends the escrowed asset to any address the claimant chooses. Once only. |
 | `releaseEscrow(lotId)` | anyone, 7 days after an off-chain sale with no dispute | Pays the seller the held payment + bond. |
-| `refundBuyer(lotId)` | seller of an off-chain lot | Returns the payment to the buyer and the bond to the seller. |
+| `refundBuyer(lotId, reason)` | seller of an off-chain lot | Sends the payment back to the buyer's wallet and the bond to the seller, with a reason (max 280 bytes) in `BuyerRefunded`. |
+| `submitEvidence(lotId, text)` | buyer or seller of an off-chain lot, while escrow is held or disputed | Records a note or link (max 1,000 bytes, 10 per party) in an `Evidence` event. |
 | `setAllowedAsset(asset, kind, allow)` / `setMaxReserve(n)` | owner | Curates which token contracts can be auctioned; adjusts the reserve cap (max 100,000 USDC). |
 | `pause()` / `unpause()` | owner | Halts `list` and `bid`. Never blocks `settle`, `claim` or the bond functions, so funds can always leave. |
 | `setReputationWriter(rw)` | owner | Wires the optional reputation contract (unset on mainnet). |
@@ -290,7 +303,7 @@ The first version of this design used a random nonce plus a second signature. Ar
 
 ## Money flows and the accounting invariant
 
-Gavel never pushes USDC to anyone during an auction. All value moves into the AuctionHouse and leaves only through `claim()`.
+During an auction Gavel never sends USDC anywhere: outbid bids go to the bidder's Gavel balance (`claimable`), where they can be withdrawn with `claim()` or reused for the next bid. Once an off-chain escrow closes (confirm, release, refund or ruling), the payout is sent straight to the recipient's wallet; if that transfer fails, it falls back to their `claimable` balance, so one bad address can never block anything.
 
 | Event | USDC into the contract | Credited to `claimable` |
 |---|---|---|
@@ -341,7 +354,7 @@ Things that only show up when you actually build on Arc, and how Gavel handles e
 |---|---|
 | USDC has 18 decimals as the native balance and 6 through the ERC-20 interface | All contract maths uses the 6-decimal ERC-20 interface. `msg.value` is never used. Relayer gas is reported by dividing native wei by 1e18. |
 | Transactions below the 20 gwei base fee disappear silently, with no error and no receipt | Every client and the relayer floor the fee at 20 gwei. |
-| Blocklisted addresses revert transfers and still burn gas | Pull payments everywhere. |
+| Blocklisted addresses revert transfers and still burn gas | Bids are refunded to a balance, never pushed; escrow payouts try the wallet and fall back to the balance if the transfer fails. |
 | `eth_getLogs` is capped at 10,000 blocks per call | Chunked log loading, sized to the cap. |
 | The public RPC rate-limits under load (`-32005`, HTTP 429) | Batched reads, one shared poller, exponential backoff, a browser cache, and a `VITE_RPC_URL` override for a dedicated RPC. |
 | viem's `multicall` needs Multicall3 declared on the chain object | Declared at `0xcA11...CA11`, which exists on Arc mainnet and testnet. |
@@ -392,7 +405,7 @@ A whole auction with three bids, a settlement and two claims costs about 2 cents
 
 **Design choices that limit damage**
 
-- Pull payments only; the contract never sends USDC during an auction.
+- No USDC is sent during an auction; payouts after it fall back to a pull balance if a transfer fails.
 - `nonReentrant` on every state-changing function, and checks-effects-interactions ordering throughout (test 16 attacks `claim` with a reentrant receiver).
 - `pause()` stops new listings and bids but can never block settlement, claims or bond releases.
 - Ownership cannot be renounced, so the contract cannot be left paused with nobody able to unpause it.
@@ -447,7 +460,7 @@ Run with `forge test` in `onchain/`. All 83 pass. Tests 38-53 cover the v7 lot k
 
 ## How it was built in Arc Studio
 
-Gavel was built in one Arc Studio project ([studio.arc.io/app/d49aa346...](https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed)) over 22 turns between 17 and 25 October 2026. Studio wrote and tested the contracts, built the app and the relayer, and deployed every testnet version. [STUDIO.md](STUDIO.md) logs each turn: the prompt, what Studio produced, what it got wrong, and what was corrected. The exact prompts are in [`prompts/`](prompts).
+Gavel was built in one Arc Studio project ([studio.arc.io/app/d49aa346...](https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed)) over 29 turns between 17 and 28 October 2026. Studio wrote and tested the contracts, built the app and the relayer, and deployed every testnet version. [STUDIO.md](STUDIO.md) logs each turn: the prompt, what Studio produced, what it got wrong, and what was corrected. The exact prompts are in [`prompts/`](prompts).
 
 | Turns | Date | What was built | Notable |
 |---|---|---|---|

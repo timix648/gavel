@@ -630,3 +630,12 @@ Usage: 68% → 70%. From now on, every change goes through Studio.
 
 ## Turn 28 (28 Oct 2026): gasless counter fixed
 The relayer `/stats` scanned 50,000 blocks in one request. The RPC caps requests at 10,000, so it errored and the error was hidden as "0". Studio made it count from the v8 deploy block in 9,000-block chunks, cache the result for 60 s, and return a real 502 on error.
+
+## Turns 29-30 (28 Oct 2026): token amounts in normal units
+**What happened.** A real mainnet user typed "17" for an EURC lot meaning 17 EURC. The field took raw smallest units, so lot #4 escrowed 0.000017 EURC and sold for $20. The contract behaved correctly (vault and house both at 0); the UI was misleading.
+
+**Turn 29.** Studio added `useTokenMeta`, which reads `decimals()` and `symbol()` on-chain and caches them. Create now takes normal units ("17" = 17 EURC), shows "You are auctioning 17 EURC", checks the seller's balance, and builds the lot URI automatically (the raw "Lot URI" box is gone). Cards, lobby, landing and the auction room show "17 EURC", "NFT #id" or "5 × #id", never raw units.
+
+**Turn 30.** On review I found that Create fell back to 18 decimals before `decimals()` loaded, which would have asked for a trillion-times-too-large approval on EURC. Studio removed the fallback and blocked submission until the token is read.
+
+Usage: 70% → 74%.

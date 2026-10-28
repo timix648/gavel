@@ -248,3 +248,5 @@ Totals: **20 bids, 13 of them gasless, 5 distinct bidder wallets, 583 USDC of bi
 - Every outbid credit (411) was either reused (147) or withdrawn (264).
 
 After the session the AuctionHouse holds **0 USDC** and every participant's claimable balance is 0. No disputes and no failed payouts: every `PaidOut` pushed directly to the wallet. The audit script is `audit.py` in the repo root.
+
+**Note on lot #4 (28 Oct):** an EURC lot listed 17 raw units (0.000017 EURC) by mistake and sold for 20 USDC. All funds moved exactly as the contract specifies (the vault and house are at 0). The participants are settling the difference privately, and the UI now uses normal token units (STUDIO.md turns 29-30).
