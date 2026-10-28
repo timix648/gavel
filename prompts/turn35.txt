@@ -1,0 +1,7 @@
+Turn 35. Brand mark only. Change nothing else.
+
+context/gavel-mark.svg is the new Gavel logo mark (64x64 viewBox, fill/stroke use currentColor, uses a mask with id "cut").
+1. Create src/components/GavelMark.tsx: a React component rendering that SVG inline, props { size?: number; className?: string }, aria-hidden. Use React useId() for the mask id so several marks on one page never clash.
+2. In src/components/Layout.tsx, replace the three Phosphor <Gavel .../> icons used next to the "Gavel" wordmark (header, mobile header, footer) with <GavelMark> at the same size and className (text-accent). Remove the Gavel import from Phosphor if it becomes unused.
+3. Replace public/favicon.svg with the mark in solid #E8561F (replace currentColor), keeping the mask.
+Typecheck, lint and build. Report the diff.

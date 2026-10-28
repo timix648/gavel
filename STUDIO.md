@@ -658,3 +658,6 @@ Prompt: [prompts/turn34.txt](prompts/turn34.txt). Studio also received the hand-
 - Auction room: reads the bidder's USDC with the ERC-20 `balanceOf` (6 decimals) and disables both bid buttons when the wallet cannot cover the top-up, with "You need $X more but your wallet has $Y".
 - New `LiveStatsStrip` on Landing and Lots: live bid volume, bids, gasless bids and lots settled from on-chain events, hidden until loaded.
 What I corrected: Studio's pull also rewrote an old v7 address into keeper/index.ts and touched unrelated files; I kept only the five intended files. Manual fix 26: the strip read "$2136.42 USDC bid", changed to "$2136.42 in bids".
+
+## Turn 35 (28 Oct): brand mark
+Prompt: [prompts/turn35.txt](prompts/turn35.txt). I drew the mark as a vector (brand/gavel-mark.svg: a slanted gavel with coin-edge bands and a strike arc) and gave it to Studio, which built `GavelMark` (unique mask ids via useId), swapped it into the header, mobile header and landing header, and replaced the favicon. No hand edits.

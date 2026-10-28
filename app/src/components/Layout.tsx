@@ -3,6 +3,7 @@ import { setNavDirection } from '../App'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useAccount, useBalance } from 'wagmi'
 import { Gavel, Plus, User, Scales, Monitor, Sun, Moon, House } from '@phosphor-icons/react'
+import GavelMark from './GavelMark'
 import { CHAIN_ID, NETWORK_LABEL } from '../chain'
 import { useTheme, ThemeChoice } from '../useTheme'
 import { formatUnits } from 'viem'
@@ -131,7 +132,7 @@ export default function Layout() {
             onClick={() => setNavDirection('/', fromPath)}
             className="flex items-center gap-2 font-semibold text-ink hover:text-accent-text transition-colors"
           >
-            <Gavel size={20} weight="bold" className="text-accent" />
+            <GavelMark size={20} className="text-accent" />
             <span className="text-lg tracking-tight">Gavel</span>
           </Link>
 
@@ -168,7 +169,7 @@ export default function Layout() {
             onClick={() => setNavDirection('/', fromPath)}
             className="flex items-center gap-2 font-semibold text-ink"
           >
-            <Gavel size={18} weight="bold" className="text-accent" />
+            <GavelMark size={18} className="text-accent" />
             <span className="tracking-tight">Gavel</span>
           </Link>
           <WalletButton />
@@ -223,7 +224,7 @@ export function LandingLayout() {
       <header className="sticky top-0 z-30 border-b border-line bg-bg/90 backdrop-blur-md">
         <div className="max-w-[1360px] mx-auto px-4 md:px-8 xl:px-12 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 font-semibold text-ink hover:text-accent-text transition-colors">
-            <Gavel size={20} weight="bold" className="text-accent" />
+            <GavelMark size={20} className="text-accent" />
             <span className="text-lg tracking-tight">Gavel</span>
           </Link>
 
