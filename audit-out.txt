@@ -1,0 +1,191 @@
+events 153 Counter({'Bid': 32, 'Outbid': 25, 'RelayedBid': 23, 'CreditUsed': 14, 'Claimed': 14, '?': 13, 'Listed': 8, 'Hammer': 7, 'BondHeld': 4, 'PaidOut': 4, 'BondReleased': 4, 'AssetClaimed': 4, 'Unsold': 1})
+distinct txs 82
+bids=32 relayed=23 distinct_bidders=5 bid_volume=846.00
+lots 8
+lot 0: kind=0 seller=0xBa6A59 reserve=20.0 bond=20.0 high=30.0 winner=0x5e507B settled=true cancelled=false bondRel=true disputed=false escrow=3
+lot 1: kind=0 seller=0xA5bB2f reserve=1.0 bond=1.0 high=41.0 winner=0x5e507B settled=true cancelled=false bondRel=true disputed=false escrow=3
+lot 2: kind=0 seller=0x5e507B reserve=24.0 bond=24.0 high=59.0 winner=0xBa6A59 settled=true cancelled=false bondRel=true disputed=false escrow=3
+lot 3: kind=0 seller=0x5e507B reserve=7.0 bond=7.0 high=42.0 winner=0xBa6A59 settled=true cancelled=false bondRel=true disputed=false escrow=3
+lot 4: kind=3 seller=0x1d94f7 reserve=20.0 bond=0.0 high=20.0 winner=0x5e507B settled=true cancelled=false bondRel=true disputed=false escrow=0
+lot 5: kind=3 seller=0x1d94f7 reserve=20.0 bond=0.0 high=0.0 winner=0x000000 settled=true cancelled=false bondRel=true disputed=false escrow=0
+lot 6: kind=3 seller=0x1d94f7 reserve=20.0 bond=0.0 high=20.0 winner=0x5e507B settled=true cancelled=false bondRel=true disputed=false escrow=0
+lot 7: kind=3 seller=0x5e507B reserve=20.05 bond=0.0 high=24.55 winner=0x1d94f7 settled=true cancelled=false bondRel=true disputed=false escrow=0
+AH USDC balance 0.0
+participants checked 17 sum claimables 0.0
+PaidOut (to,amount,pushed): [('0xba6a59', 50.0, True), ('0xa5bb2f', 42.0, True), ('0x5e507b', 83.0, True), ('0x5e507b', 49.0, True)]
+unknown events 13
+--- per-lot timeline ---
+[0]
+    ? 0xba6a59 [] 0xe57ba214
+    Listed 0xba6a59 [1e-06, 20.0, 1793.184945] 0x06a5f988
+    Bid 0x5e507b [20.0] 0x6e893a7e
+    Outbid 0x5e507b [20.0] 0xcd456cd8
+    Bid 0xa5bb2f [25.0] 0xcd456cd8
+    RelayedBid 0xa5bb2f, 0x711850 [25.0] 0xcd456cd8
+    Outbid 0xa5bb2f [25.0] 0x1d59f007
+    Bid 0x5e507b [30.0] 0x1d59f007
+    CreditUsed 0x5e507b [20.0] 0x1d59f007
+    Hammer 0x5e507b [30.0] 0x1e3073b0
+    BondHeld  [20.0] 0x1e3073b0
+    BondReleased 0xba6a59 [20.0] 0xd0118731
+[1]
+    Listed 0xa5bb2f [2e-06, 1.0, 1793.186924] 0x69114c75
+    Bid 0xd6869c [1.0] 0xe3d67d47
+    RelayedBid 0xd6869c, 0x711850 [1.0] 0xe3d67d47
+    Outbid 0xd6869c [1.0] 0xa020bbb6
+    Bid 0xba6a59 [21.0] 0xa020bbb6
+    RelayedBid 0xba6a59, 0x711850 [21.0] 0xa020bbb6
+    Outbid 0xba6a59 [21.0] 0x37d014d3
+    Bid 0x5e507b [41.0] 0x37d014d3
+    Hammer 0x5e507b [41.0] 0x28144f86
+    BondHeld  [1.0] 0x28144f86
+    BondReleased 0xa5bb2f [1.0] 0xe3e18a9f
+[2]
+    Listed 0x5e507b [3e-06, 24.0, 1793.188541] 0x60999a1d
+    Bid 0xa5bb2f [24.0] 0x7c3166ae
+    RelayedBid 0xa5bb2f, 0x711850 [24.0] 0x7c3166ae
+    Outbid 0xa5bb2f [24.0] 0xbfe2e47b
+    Bid 0xba6a59 [31.0] 0xbfe2e47b
+    RelayedBid 0xba6a59, 0x711850 [31.0] 0xbfe2e47b
+    Outbid 0xba6a59 [31.0] 0xbc80ba25
+    Bid 0xa5bb2f [38.0] 0xbc80ba25
+    RelayedBid 0xa5bb2f, 0x711850 [38.0] 0xbc80ba25
+    Outbid 0xa5bb2f [38.0] 0xd247e435
+    Bid 0xba6a59 [45.0] 0xd247e435
+    CreditUsed 0xba6a59 [31.0] 0xd247e435
+    Outbid 0xba6a59 [45.0] 0x1e43efdb
+    Bid 0xd6869c [52.0] 0x1e43efdb
+    RelayedBid 0xd6869c, 0x711850 [52.0] 0x1e43efdb
+    Outbid 0xd6869c [52.0] 0xcd080d92
+    Bid 0xba6a59 [59.0] 0xcd080d92
+    CreditUsed 0xba6a59 [45.0] 0xcd080d92
+    Hammer 0xba6a59 [59.0] 0xb1f2f799
+    BondHeld  [24.0] 0xb1f2f799
+    BondReleased 0x5e507b [24.0] 0x7174c97a
+[3]
+    Listed 0x5e507b [4e-06, 7.0, 1793.189395] 0x14377345
+    Bid 0xba6a59 [7.0] 0xa907ea54
+    Outbid 0xba6a59 [7.0] 0x1519b18a
+    Bid 0xd6869c [12.0] 0x1519b18a
+    RelayedBid 0xd6869c, 0x711850 [12.0] 0x1519b18a
+    Outbid 0xd6869c [12.0] 0x437bdabe
+    Bid 0xba6a59 [17.0] 0x437bdabe
+    CreditUsed 0xba6a59 [7.0] 0x437bdabe
+    RelayedBid 0xba6a59, 0x711850 [17.0] 0x437bdabe
+    Outbid 0xba6a59 [17.0] 0x0c859d4e
+    Bid 0xd6869c [22.0] 0x0c859d4e
+    RelayedBid 0xd6869c, 0x711850 [22.0] 0x0c859d4e
+    Outbid 0xd6869c [22.0] 0x19ef04a2
+    Bid 0xba6a59 [27.0] 0x19ef04a2
+    CreditUsed 0xba6a59 [17.0] 0x19ef04a2
+    RelayedBid 0xba6a59, 0x711850 [27.0] 0x19ef04a2
+    Outbid 0xba6a59 [27.0] 0xdef853be
+    Bid 0xd6869c [32.0] 0xdef853be
+    RelayedBid 0xd6869c, 0x711850 [32.0] 0xdef853be
+    Outbid 0xd6869c [32.0] 0x0bf917b5
+    Bid 0x1d94f7 [37.0] 0x0bf917b5
+    Outbid 0x1d94f7 [37.0] 0x68dab3e7
+    Bid 0xba6a59 [42.0] 0x68dab3e7
+    CreditUsed 0xba6a59 [27.0] 0x68dab3e7
+    RelayedBid 0xba6a59, 0x711850 [42.0] 0x68dab3e7
+    Hammer 0xba6a59 [42.0] 0xd693d3e3
+    BondHeld  [7.0] 0xd693d3e3
+    BondReleased 0x5e507b [7.0] 0xee4cfb32
+[4]
+    Listed 0x1d94f7 [0.0, 20.0, 1793.192556] 0x2a9aa2cb
+    Bid 0x5e507b [20.0] 0x1d366331
+    RelayedBid 0x5e507b, 0x711850 [20.0] 0x1d366331
+    Hammer 0x5e507b [20.0] 0x777f3a53
+    AssetClaimed 0x5e507b, 0x5e507b [] 0xb02d2491
+[5]
+    Listed 0x1d94f7 [0.0, 20.0, 1793.19612] 0x6867a5d8
+    Unsold 0x1d94f7 [] 0x9b7c499d
+    AssetClaimed 0x1d94f7, 0x1d94f7 [] 0x02e3e97d
+[6]
+    Listed 0x1d94f7 [0.0, 20.0, 1793.197408] 0x032d2e92
+    Bid 0x5e507b [20.0] 0x8ae533e2
+    RelayedBid 0x5e507b, 0x711850 [20.0] 0x8ae533e2
+    Hammer 0x5e507b [20.0] 0xa4153860
+    AssetClaimed 0x5e507b, 0x5e507b [] 0x2afc05c0
+[7]
+    Listed 0x5e507b [0.0, 20.05, 1793.216739] 0x86cb1452
+    Bid 0xba6a59 [20.05] 0x739bcaca
+    RelayedBid 0xba6a59, 0x711850 [20.05] 0x739bcaca
+    Outbid 0xba6a59 [20.05] 0x5dbaeab5
+    Bid 0x1d94f7 [20.55] 0x5dbaeab5
+    RelayedBid 0x1d94f7, 0x711850 [20.55] 0x5dbaeab5
+    Outbid 0x1d94f7 [20.55] 0xa88dcf19
+    Bid 0xba6a59 [21.05] 0xa88dcf19
+    CreditUsed 0xba6a59 [20.05] 0xa88dcf19
+    Outbid 0xba6a59 [21.05] 0x8fbc96d5
+    Bid 0x1d94f7 [21.55] 0x8fbc96d5
+    CreditUsed 0x1d94f7 [20.55] 0x8fbc96d5
+    Outbid 0x1d94f7 [21.55] 0x3f741c2e
+    Bid 0xba6a59 [22.05] 0x3f741c2e
+    CreditUsed 0xba6a59 [21.05] 0x3f741c2e
+    RelayedBid 0xba6a59, 0x711850 [22.05] 0x3f741c2e
+    Outbid 0xba6a59 [22.05] 0x5edf253c
+    Bid 0x1d94f7 [22.55] 0x5edf253c
+    CreditUsed 0x1d94f7 [21.55] 0x5edf253c
+    RelayedBid 0x1d94f7, 0x711850 [22.55] 0x5edf253c
+    Outbid 0x1d94f7 [22.55] 0x5503e6d9
+    Bid 0xba6a59 [23.05] 0x5503e6d9
+    CreditUsed 0xba6a59 [22.05] 0x5503e6d9
+    RelayedBid 0xba6a59, 0x711850 [23.05] 0x5503e6d9
+    Outbid 0xba6a59 [23.05] 0xe7db344c
+    Bid 0x1d94f7 [23.55] 0xe7db344c
+    CreditUsed 0x1d94f7 [22.55] 0xe7db344c
+    RelayedBid 0x1d94f7, 0x711850 [23.55] 0xe7db344c
+    Outbid 0x1d94f7 [23.55] 0xcb510406
+    Bid 0xba6a59 [24.05] 0xcb510406
+    CreditUsed 0xba6a59 [23.05] 0xcb510406
+    RelayedBid 0xba6a59, 0x711850 [24.05] 0xcb510406
+    Outbid 0xba6a59 [24.05] 0x231dbf50
+    Bid 0x1d94f7 [24.55] 0x231dbf50
+    CreditUsed 0x1d94f7 [23.55] 0x231dbf50
+    RelayedBid 0x1d94f7, 0x711850 [24.55] 0x231dbf50
+    Hammer 0x1d94f7 [24.55] 0x19d9415f
+    AssetClaimed 0x1d94f7, 0x1d94f7 [] 0xe4821073
+[131892364586606981153833180823724770977757641376]
+    ?  [3e-06, 1e-06] 0xb1ce8073
+[134406762171500462427275572892077053896919270217]
+    ?  [3e-06, 1e-06] 0x37f3277b
+[677324110030171557826678172581353016568355613504]
+    ?  [3e-06, 1e-06] 0x5951c668
+[730854082787950615942548630492341556437757568050]
+    ?  [1e-06, 1e-06] 0x470d3a81
+[800737768511907752477487773555609590924179948215]
+    ?  [3e-06, 1e-06] 0xfd9c0634
+[1064243920209521723446637091844775050212804975119]
+    ? 0xba6a59 [] 0xe57ba214
+[1072725314833669464377737408059766949793176018827]
+    ?  [3e-06, 1e-06] 0xc26fe4fb
+[1090193431170817140551849436725531715088425034177]
+    ?  [3e-06, 1e-06] 0xe96a261c
+[1227704774800016765832547439973438793164087534345]
+    ?  [3e-06, 1e-06] 0x1c1b1f7d
+[1229916733799690579175243716972865616035100987616]
+    ?  [3e-06, 1e-06] 0x1bf0dd8a
+[1379256468127493427870229688610345761715260260522]
+    ?  [3e-06, 1e-06] 0xdabaac9d
+[1433113225006966189012852550692063785585140034583]
+    ?  [3e-06, 1e-06] 0x522dbed2
+[payouts]
+    Claimed  [25.0] 0xee3a2aa1
+    PaidOut  [50.0, 1e-06] 0xd0118731
+    Claimed  [1.0] 0x28156d46
+    Claimed  [21.0] 0xc7e13459
+    PaidOut  [42.0, 1e-06] 0xe3e18a9f
+    Claimed  [24.0] 0x5e677c9a
+    Claimed  [38.0] 0x0253e5b5
+    Claimed  [52.0] 0xe83e7e17
+    PaidOut  [83.0, 1e-06] 0x7174c97a
+    Claimed  [12.0] 0xb6698421
+    Claimed  [22.0] 0x4a298855
+    Claimed  [32.0] 0xc5e3fa23
+    PaidOut  [49.0, 1e-06] 0xee4cfb32
+    Claimed  [37.0] 0x4168001b
+    Claimed  [20.0] 0x7fa6f9ba
+    Claimed  [20.0] 0x8034828a
+    Claimed  [24.05] 0xc4bfac2a
+    Claimed  [24.55] 0xca5a389a

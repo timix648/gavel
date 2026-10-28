@@ -253,3 +253,14 @@ After the session the AuctionHouse holds **0 USDC** and every participant's clai
 
 ## Token allowlist on v8 (28 Oct 2026)
 EURC, cirBTC, LINK, XAUM, VIRTUAL, GBPA, MXNB, QCAD, TRYB and WBRL are allowlisted as ERC-20; the ERC-8004 IdentityRegistry is allowlisted as ERC-721. Each token passed a fork-of-mainnet list, bid, settle and claim auction with exact amounts (vet.sh). Allowlist transactions: cirBTC 0xb1ce8073…, LINK 0x5951c668…, XAUM 0x37f3277b…, VIRTUAL 0xfd9c0634…, GBPA 0xc26fe4fb…, MXNB 0xdabaac9d…, QCAD 0x1c1b1f7d…, TRYB 0x522dbed2…, WBRL 0x1bf0dd8a…. The fake "USDC" (UpSideDownCat, 0x8E98…F9D9) is not allowed.
+
+## Second v8 session: EURC auctions (28 Oct 2026), audited on-chain
+| Lot | Asset (escrowed at listing) | Seller → winner | Bids (gasless) | Result |
+|---|---|---|---|---|
+| 5 | 17.958786 EURC | 0x1d94 | 0 | Unsold at the 20 USDC reserve; the seller reclaimed the EURC (`AssetClaimed`) |
+| 6 | 17.958786 EURC | 0x1d94 → 0x5e50 | 1 (1) | Sold for 20.00; the winner claimed the EURC; the seller withdrew 20.00 |
+| 7 | 17.958803 EURC | 0x5e50 → 0x1d94 | 12 (8) | A bidding war from 20.05 to 24.55 in 0.50 steps, 10 of the bids funded by top-up credit; the winner claimed the EURC; the seller withdrew 24.55; the outbid wallet withdrew 24.05 |
+
+v8 totals after this session (recomputed by `audit.py` from every event since the deploy block):
+- 8 lots, **32 bids (23 gasless)**, 5 distinct bidder wallets, **846 USDC of bid volume**.
+- The AuctionHouse holds **0 USDC**, the vault holds **0 EURC**, and claimable balances are **0** across all 17 addresses seen.

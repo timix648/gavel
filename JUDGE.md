@@ -17,7 +17,7 @@ Live app: https://gavel-alpha.vercel.app · Live proof (no wallet): https://gave
 |---|---|
 | AuctionHouse, source verified (exact match) | [explorer](https://explorer.arc.io/address/0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6) · [Sourcify](https://repo.sourcify.dev/5042/0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6) |
 | Mainnet deploy (v8) | [0xe57ba214…](https://explorer.arc.io/tx/0xe57ba2140d97356597d43894f18f8119288febc62ed92e0558650dd7eb7327d2) |
-| Real trading session: 4 lots, 20 bids (13 gasless), 5 wallets, 583 USDC volume, house back to 0 | [PROOF.md](PROOF.md) |
+| Real trading on v8: 8 lots (off-chain and EURC), 32 bids (23 gasless), 5 wallets, 846 USDC bid volume, house and vault back to 0 | [PROOF.md](PROOF.md) |
 | Every transaction | [PROOF.md](PROOF.md) |
 
 ## Receipt block
