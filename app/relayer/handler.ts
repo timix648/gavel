@@ -9,9 +9,8 @@
  *   ARC_RPC_URL           — override the default Arc Mainnet RPC
  *
  * POST /bid
- *   Body: { lotId, amount, from, validAfter, validBefore, salt, sig: { v, r, s } }
- *   The relayer recomputes nonce = keccak256(abi.encode(AH, chainId, lotId, amount, salt))
- *   and calls bidWithAuthorization with one signature.
+ *   Body: { lotId, amount, topUp, from, validAfter, validBefore, salt, sig: { v, r, s } }
+ *   The relayer calls bidWithAuthorization (v8) with the topUp portion signed by from.
  *   Returns: { txHash } on success or { error } on failure.
  *
  * GET /stats
@@ -35,21 +34,18 @@ const RPC_URL = process.env.ARC_RPC_URL ?? 'https://rpc.mainnet.arc.io'
 const DEFAULT_AH_ADDRESS = '0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6'
 const AH_ADDRESS = (process.env.AUCTION_HOUSE_ADDRESS ?? DEFAULT_AH_ADDRESS) as Address
 const USDC_ADDRESS = '0x3600000000000000000000000000000000000000' as Address
-const USDC_DECIMALS = 6
 const MAX_FEE_PER_GAS = 20_000_000_000n  // 20 gwei — Arc's minimum floor
 const PRIORITY_FEE   = 0n
 const RECEIPT_TIMEOUT_MS = 15_000
 // Per-address rate limit: 5 bids per minute
 const RATE_LIMIT_WINDOW_MS = 60_000
 const RATE_LIMIT_MAX = 5
-// Daily spend cap: max USDC value relayed per bidder address per day
-const DAILY_SPEND_CAP = 100_000_000n  // 100 USDC (6-dec units)
 
 // ── ABI ────────────────────────────────────────────────────────────────────────
 
 const AH_ABI = parseAbi([
   'function bidWithAuthorization(uint256 lotId, uint256 amount, uint256 topUp, address from, uint256 validAfter, uint256 validBefore, bytes32 salt, uint8 v, bytes32 r, bytes32 s) external',
-  'event RelayedBid(uint256 indexed lotId, address indexed bidder, uint256 amount)',
+  'event RelayedBid(uint256 indexed lotId, address indexed bidder, address indexed relayer, uint256 amount)',
   'function lots(uint256 lotId) external view returns (address seller, uint256 tokenId, uint256 reserve, uint256 minIncrement, uint256 bond, uint256 deadline, uint256 highestBid, address highestBidder, uint256 extensions, uint256 settledAt, bool settled, bool cancelled, bool bondReleased, bool disputed)',
   'function paused() external view returns (bool)',
 ])
@@ -107,22 +103,6 @@ function checkRateLimit(addr: string): { ok: boolean; reason?: string } {
   return { ok: true }
 }
 
-// ── Daily spend cap ────────────────────────────────────────────────────────────
-
-// Maps address → { date (YYYY-MM-DD), total spend in USDC units }
-const dailySpend = new Map<string, { date: string; total: bigint }>()
-function checkDailySpend(addr: string, amount: bigint): { ok: boolean; reason?: string } {
-  const today = new Date().toISOString().slice(0, 10)
-  const entry = dailySpend.get(addr)
-  const current = entry?.date === today ? entry.total : 0n
-  if (current + amount > DAILY_SPEND_CAP) {
-    const capUsdc = (Number(DAILY_SPEND_CAP) / 10 ** USDC_DECIMALS).toFixed(USDC_DECIMALS)
-    return { ok: false, reason: `Daily spend cap: max ${capUsdc} USDC relayed per address per day` }
-  }
-  dailySpend.set(addr, { date: today, total: current + amount })
-  return { ok: true }
-}
-
 // ── Stats ──────────────────────────────────────────────────────────────────────
 
 // B10: stats come from on-chain RelayedBid events, not in-memory counters
@@ -149,7 +129,7 @@ export async function handle(req: Request): Promise<Response> {
         const fromBlock = head > 50_000n ? head - 50_000n : 0n
         const logs = await publicClient.getLogs({
           address: AH_ADDRESS,
-          event: { name: 'RelayedBid', type: 'event', inputs: [{ name: 'lotId', type: 'uint256', indexed: true }, { name: 'bidder', type: 'address', indexed: true }, { name: 'amount', type: 'uint256', indexed: false }] },
+          event: { name: 'RelayedBid', type: 'event', inputs: [{ name: 'lotId', type: 'uint256', indexed: true }, { name: 'bidder', type: 'address', indexed: true }, { name: 'relayer', type: 'address', indexed: true }, { name: 'amount', type: 'uint256', indexed: false }] },
           fromBlock,
           toBlock: head,
         })
@@ -184,11 +164,9 @@ export async function handle(req: Request): Promise<Response> {
           return Response.json({ error: 'validBefore is in the past' }, { status: 400, headers: corsHeaders })
         }
 
-        // ── Rate limit & daily spend cap ──────────────────────────────────────
+        // ── Rate limit ─────────────────────────────────────────────────────────
         const rl = checkRateLimit(from.toLowerCase())
         if (!rl.ok) return Response.json({ error: rl.reason }, { status: 429, headers: corsHeaders })
-        const ds = checkDailySpend(from.toLowerCase(), BigInt(amount))
-        if (!ds.ok) return Response.json({ error: ds.reason }, { status: 429, headers: corsHeaders })
 
         // ── Validate lot state on-chain ───────────────────────────────────────
         const isPaused = await publicClient.readContract({ address: AH_ADDRESS, abi: AH_ABI, functionName: 'paused' })

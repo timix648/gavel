@@ -616,3 +616,14 @@ Testnet run on the fixed code (`0x2621…4A34`):
 - the house ended at 0.
 
 Mainnet v8 `0xA51A…dEa6` is a Sourcify exact match.
+
+## Turn 27 (28 Oct 2026): v8 synced back, $100 relayer cap removed, simpler bid wording
+I uploaded the exact v8 files live on mainnet. Studio reviewed my manual fixes 20-23 one by one and judged all of them correct; 83/83 tests pass.
+
+It made the two requested changes:
+- removed the relayer's per-wallet $100/day bid-value cap, which blocked real bidding even though the relayer only pays about $0.004 of gas per bid (the 5-per-minute rate limit stays);
+- replaced the top-up wording with "Outbid with $X extra" and fixed a doubled "$$".
+
+It also caught a bug I'd missed: the relayer's `RelayedBid` ABI lacked the `address indexed relayer` parameter, so the event hash was wrong and the gasless counter always showed 0.
+
+Usage: 68% → 70%. From now on, every change goes through Studio.

@@ -1,0 +1,16 @@
+Turn 27: sync the audited v8 back into this project, plus two small changes. Do not touch the contracts.
+
+The uploaded files are exactly what is live on Arc mainnet (AuctionHouse v8 0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6, Sourcify exact match). Your daily limit stopped turn 26, so I made these fixes outside Studio:
+- Contract: the gasless credit check now runs AFTER _bidCore, so a leader raising their own bid gaslessly can reuse the bid just returned (test 83).
+- api/_chain.js, api/notify-dispute.js, api/cron-disputes.js were rewritten with viem and the real ABI. The turn-26 versions used invented selectors (0x52f3f18c / 0x3e5b3044; the real ones are 0x87e75b0c / 0x6adcf77d) and an invented Disputed topic. They also needed env vars nobody sets, and the cron asked for 345,600 blocks in one getLogs (the RPC caps it at 10,000).
+- api/upload.js accepts OIDC (BLOB_STORE_ID) as well as BLOB_READ_WRITE_TOKEN, allows WebP/JPEG/PNG only (no SVG) and uses addRandomSuffix. Create.tsx asks GET /api/upload whether upload is configured instead of using VITE_BLOB_CONFIGURED.
+- AuctionRoom.tsx calls /api/notify-dispute after a dispute confirms. vercel.json schedules the cron.
+
+Do this:
+1. Review those fixes critically, and say if any is wrong.
+2. relayer/handler.ts: remove the per-address daily spend cap (DAILY_SPEND_CAP and checkDailySpend). It limits bid value, but the relayer only ever pays gas (~$0.004 per bid), so it just blocks real bidding. Keep the 5-bids-per-minute rate limit.
+3. src/pages/AuctionRoom.tsx, the bid button and the line under it. Replace the current top-up/credit wording with exactly this (fmtUsdc already includes the "$", so never prefix another "$"):
+   - credit > 0 and topUp > 0: button "Outbid with {fmtUsdc(topUp)} extra"; line "Your {fmtUsdc(credit)} already counts. You add only {fmtUsdc(topUp)}."
+   - credit covers the whole bid: button "Bid {fmtUsdc(nextBid)} from your balance"; line "Nothing new leaves your wallet."
+   - no credit: button "Bid {fmtUsdc(nextBid)}" (keep the gasless lightning icon and the "Gasless" prefix when gasless mode is on); line "If you're outbid, you get it back."
+4. Run the Foundry suite (expect 83/83), typecheck and lint. Report the diff of every file you changed. Do not deploy.

@@ -229,3 +229,22 @@ Allowlist transactions:
 All 4 contracts are a Sourcify exact match. The deploy script ran 83/83 tests first.
 
 Earlier contracts stay readable: v6 `0x24D8…56dd` (lot #0, Oct 25) and v7 `0x6102…3A2E` (lot #0, $2.00, confirmed and closed). The app now lists on v8.
+
+## First real v8 trading session (28 Oct 2026), audited on-chain
+4 off-chain lots, 45 transactions, all with status = true. Participants: the builder `0xBa6A…dA0F` and friends' wallets `0x5e50…9650`, `0xA5bB…`, `0xd686…` and `0x1d94…1038`. These are real people bidding with their own USDC. Some of them received USDC from the builder for testing, and that is disclosed here.
+
+| Lot | Seller | Reserve / bond | Winning bid | Winner | Bids (gasless) | Outcome |
+|---|---|---|---|---|---|---|
+| 0 | 0xBa6A | 20 / 20 | 30 | 0x5e50 | 3 (1) | delivery confirmed; seller paid 50 directly |
+| 1 | 0xA5bB | 1 / 1 | 41 | 0x5e50 | 3 (2) | confirmed; seller paid 42 directly |
+| 2 | 0x5e50 | 24 / 24 | 59 | 0xBa6A | 6 (4) | confirmed; seller paid 83 directly |
+| 3 | 0x5e50 | 7 / 7 | 42 | 0xBa6A | 8 (6) | confirmed; seller paid 49 directly |
+
+Totals: **20 bids, 13 of them gasless, 5 distinct bidder wallets, 583 USDC of bid volume.** Top-up bidding was used 6 times, reusing 147 USDC of outbid refunds without new wallet transfers.
+
+**Reconciliation:**
+- In: 52 (bonds) + 436 (new bid money) = **488 USDC**.
+- Out: 264 (outbid withdrawals) + 224 (pushed seller payouts) = **488 USDC**.
+- Every outbid credit (411) was either reused (147) or withdrawn (264).
+
+After the session the AuctionHouse holds **0 USDC** and every participant's claimable balance is 0. No disputes and no failed payouts: every `PaidOut` pushed directly to the wallet. The audit script is `audit.py` in the repo root.

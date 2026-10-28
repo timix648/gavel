@@ -16,10 +16,8 @@ Live app: https://gavel-alpha.vercel.app · Live proof (no wallet): https://gave
 | What | Link |
 |---|---|
 | AuctionHouse, source verified (exact match) | [explorer](https://explorer.arc.io/address/0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6) · [Sourcify](https://repo.sourcify.dev/5042/0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6) |
-| Mainnet deploy | [0xa17499ea…](https://explorer.arc.io/tx/0xa17499eaed3ccc04ecb6a6939d9d8b8ec1f90a1e8de1ccd3fb44d0662861d7b2) |
-| A gasless bid sent by the relayer | _mainnet hash after the live event_ |
-| A bid that extended the clock | _mainnet hash_ |
-| Settle via Memo (NFT + payment in one tx) | _mainnet hash_ |
+| Mainnet deploy (v8) | [0xe57ba214…](https://explorer.arc.io/tx/0xe57ba2140d97356597d43894f18f8119288febc62ed92e0558650dd7eb7327d2) |
+| Real trading session: 4 lots, 20 bids (13 gasless), 5 wallets, 583 USDC volume, house back to 0 | [PROOF.md](PROOF.md) |
 | Every transaction | [PROOF.md](PROOF.md) |
 
 ## Receipt block
@@ -29,7 +27,7 @@ Live app: https://gavel-alpha.vercel.app · Live proof (no wallet): https://gave
 | Tests | 83 Foundry. Also Slither (no medium/high) and an Arc Studio review ([AUDIT.md](AUDIT.md)) |
 | Gas | bid 115,569 (≈ $0.003) · gasless bid 144,648 (≈ $0.004) · settle 128,668 (≈ $0.003) · list 427,667 (≈ $0.011) |
 | Automated activity | none. Every lot is listed by a real seller. |
-| Built in Arc Studio | 22 turns, every one logged with what Studio got wrong ([STUDIO.md](STUDIO.md)) |
+| Built in Arc Studio | 27 turns, every one logged with what Studio got wrong ([STUDIO.md](STUDIO.md)) |
 | Keys held by the app | 1: a small gasless-relayer hot wallet with rate limits and a daily cap |
 
 ## Reproduce (read-only)
@@ -38,6 +36,6 @@ git clone https://github.com/timix648/gavel && cd gavel/onchain && forge test   
 ```
 
 ## Honest limitations
-- A winner who never receives the lot recovers the bond (= reserve), not the full price.
+- Off-chain lots rely on the seller delivering. The payment stays in escrow until the winner confirms, and disputes go to the owner (14-day timeout splits 50/50).
 - A seller can shill from a second wallet; no contract can stop that.
-- Internal review plus an Arc Studio review, not a third-party audit. Amounts are capped in v1.
+- Internal review plus an Arc Studio review, not a third-party audit. The reserve is capped at 1,000 USDC; bids are uncapped.

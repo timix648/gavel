@@ -753,15 +753,15 @@ export default function AuctionRoom() {
                         ? (() => {
                             const credit = claimableAmt
                             const topUp = nextBid > credit ? nextBid - credit : 0n
-                            const hasSplit = credit > 0n && topUp > 0n
+                            const creditCoversAll = credit >= nextBid
                             return (
                               <>
-                                {gaslessMode && <Lightning size={15} weight="fill" />}
-                                {hasSplit
-                                  ? <>${fmtUsdc(topUp)} top-up + {fmtUsdc(credit)} credit</>
-                                  : topUp === 0n && credit >= nextBid
-                                  ? <>Bid {fmtUsdc(nextBid)} from balance</>
-                                  : <>{gaslessMode ? 'Gasless bid ' : 'Bid '}{fmtUsdc(nextBid)}</>}
+                                {gaslessMode && !creditCoversAll && <Lightning size={15} weight="fill" />}
+                                {credit > 0n && topUp > 0n
+                                  ? <>Outbid with {fmtUsdc(topUp)} extra</>
+                                  : creditCoversAll
+                                  ? <>Bid {fmtUsdc(nextBid)} from your balance</>
+                                  : <>{gaslessMode ? 'Gasless ' : ''}Bid {fmtUsdc(nextBid)}</>}
                               </>
                             )
                           })()
@@ -770,7 +770,11 @@ export default function AuctionRoom() {
                   </button>
                   {!!address && bidStep === 'idle' && (
                     <p className="text-xs text-ink-3 -mt-1">
-                      {claimableAmt >= nextBid ? 'Fully covered by your balance.' : claimableAmt > 0n ? `Uses $${fmtUsdc(claimableAmt)} from your balance, $${fmtUsdc(nextBid - claimableAmt)} new.` : `Locks $${fmtUsdc(nextBid)}. If outbid, returns to your balance.`}
+                      {claimableAmt >= nextBid
+                        ? 'Nothing new leaves your wallet.'
+                        : claimableAmt > 0n
+                        ? `Your ${fmtUsdc(claimableAmt)} already counts. You add only ${fmtUsdc(nextBid - claimableAmt)}.`
+                        : "If you're outbid, you get it back."}
                     </p>
                   )}
 
