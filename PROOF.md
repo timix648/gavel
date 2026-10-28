@@ -250,3 +250,6 @@ Totals: **20 bids, 13 of them gasless, 5 distinct bidder wallets, 583 USDC of bi
 After the session the AuctionHouse holds **0 USDC** and every participant's claimable balance is 0. No disputes and no failed payouts: every `PaidOut` pushed directly to the wallet. The audit script is `audit.py` in the repo root.
 
 **Note on lot #4 (28 Oct):** an EURC lot listed 17 raw units (0.000017 EURC) by mistake and sold for 20 USDC. All funds moved exactly as the contract specifies (the vault and house are at 0). The participants are settling the difference privately, and the UI now uses normal token units (STUDIO.md turns 29-30).
+
+## Token allowlist on v8 (28 Oct 2026)
+EURC, cirBTC, LINK, XAUM, VIRTUAL, GBPA, MXNB, QCAD, TRYB and WBRL are allowlisted as ERC-20; the ERC-8004 IdentityRegistry is allowlisted as ERC-721. Each token passed a fork-of-mainnet list, bid, settle and claim auction with exact amounts (vet.sh). Allowlist transactions: cirBTC 0xb1ce8073…, LINK 0x5951c668…, XAUM 0x37f3277b…, VIRTUAL 0xfd9c0634…, GBPA 0xc26fe4fb…, MXNB 0xdabaac9d…, QCAD 0x1c1b1f7d…, TRYB 0x522dbed2…, WBRL 0x1bf0dd8a…. The fake "USDC" (UpSideDownCat, 0x8E98…F9D9) is not allowed.
