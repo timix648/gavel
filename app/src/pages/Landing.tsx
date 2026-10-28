@@ -69,27 +69,36 @@ function FadeUp({ children, delay = 0, className = '' }: { children: React.React
 // decimals: number of decimal places to maintain in the count-up value
 function useCountUp(target: number, duration = 1200, decimals = 0) {
   const [val, setVal] = useState(0)
-  const visible = useRef(false)   // B9: track visibility separately from started
-  const raf = useRef<number | null>(null)
-  const ref = useRef<HTMLDivElement>(null)
+  const visible   = useRef(false)
+  const raf       = useRef<number | null>(null)
+  const ref       = useRef<HTMLDivElement>(null)
+  // The latest target, so an animation started by the observer never uses a stale value.
+  const targetRef = useRef(target)
+  const shownRef  = useRef(0)
+  targetRef.current = target
 
-  // B9: trigger a fresh count-up whenever target changes (and element is visible)
-  useEffect(() => {
-    if (!visible.current) return
+  const animateTo = useCallback((to: number) => {
     if (raf.current !== null) cancelAnimationFrame(raf.current)
+    const from  = shownRef.current
     const start = Date.now()
-    const startVal = 0
-    const mult = Math.pow(10, decimals)
+    const mult  = Math.pow(10, decimals)
     const tick = () => {
       const p = Math.min(1, (Date.now() - start) / duration)
-      setVal(Math.round((startVal + p * (target - startVal)) * mult) / mult)
-      if (p < 1) { raf.current = requestAnimationFrame(tick) } else { raf.current = null }
+      const v = Math.round((from + p * (to - from)) * mult) / mult
+      shownRef.current = v
+      setVal(v)
+      raf.current = p < 1 ? requestAnimationFrame(tick) : null
     }
     raf.current = requestAnimationFrame(tick)
-    return () => { if (raf.current !== null) cancelAnimationFrame(raf.current) }
-  }, [target, duration, decimals])
+  }, [duration, decimals])
 
-  // Start on first intersection
+  // Data that arrives after the stats are on screen animates from the shown value.
+  useEffect(() => {
+    if (visible.current) animateTo(target)
+  }, [target, animateTo])
+
+  // First time the stats come into view (including already in view on mount),
+  // count up to whatever the latest target is.
   useEffect(() => {
     const el = ref.current
     if (!el) return
@@ -97,19 +106,11 @@ function useCountUp(target: number, duration = 1200, decimals = 0) {
       if (!entries[0].isIntersecting || visible.current) return
       visible.current = true
       obs.disconnect()
-      const start = Date.now()
-      const mult = Math.pow(10, decimals)
-      const tick = () => {
-        const p = Math.min(1, (Date.now() - start) / duration)
-        setVal(Math.round(p * target * mult) / mult)
-        if (p < 1) requestAnimationFrame(tick)
-      }
-      requestAnimationFrame(tick)
+      animateTo(targetRef.current)
     }, { threshold: 0.3 })
     obs.observe(el)
-    return () => obs.disconnect()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])  // run once; target changes handled above
+    return () => { obs.disconnect(); if (raf.current !== null) cancelAnimationFrame(raf.current) }
+  }, [animateTo])
 
   return { val, ref }
 }
@@ -819,10 +820,11 @@ export default function Landing() {
 
   // ── Log store stats ──────────────────────────────────────────────────────
   const marketLogs  = logs.filter(l => MARKET_EVENTS.has(l.name))
-  const bidLogs     = logs.filter(l => l.name === 'Bid' || l.name === 'RelayedBid')
+  // Every gasless bid emits both Bid and RelayedBid, so count bids from Bid only.
+  const bidLogs     = logs.filter(l => l.name === 'Bid')
   const relayedLogs = logs.filter(l => l.name === 'RelayedBid')
   const hammerLogs  = logs.filter(l => l.name === 'Hammer')
-  const distinctBidders = new Set(bidLogs.map(l => l.args.bidder as string)).size
+  const distinctBidders = new Set(bidLogs.map(l => String(l.args.bidder).toLowerCase())).size
   const totalBidVol = bidLogs.reduce((s, l) => s + (l.args.amount as bigint ?? 0n), 0n)
 
   const latestRelayed = relayedLogs[relayedLogs.length - 1]

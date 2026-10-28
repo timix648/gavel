@@ -648,3 +648,6 @@ Usage: 70% → 74%.
 **Vetting.** I vetted the 9 tokens myself with `vet.sh`: a full list, bid, settle and claim auction for each on a fork of Arc mainnet, with exact amounts in and out. All passed: EURC, cirBTC, LINK, XAUM, VIRTUAL, GBPA, MXNB, QCAD, TRYB, WBRL. The owner allowlists them with `allowlist-tokens.sh`.
 
 Usage: 74% to 78%.
+
+### Manual fix 25 (28 Oct 2026, Studio unavailable: "fetch failed" loading the thread twice)
+The landing stats showed 0 despite 21 bids in the log store. `useCountUp`'s observer animated to the target captured at mount (0); if logs loaded before the stats scrolled into view, the target-change effect had already returned early. The hook now keeps the latest target in a ref and animates from the shown value. The landing page also double-counted gasless bids (`Bid` + `RelayedBid`), so bids, volume and bidders now come from `Bid` only, with bidders compared case-insensitively. `/proof` already counted correctly. To be synced to Studio when it is reachable.

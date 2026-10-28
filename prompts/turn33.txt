@@ -1,0 +1,8 @@
+Turn 33: two bugs in the Landing page stats ("Bid volume / Bids placed / Distinct bidders / Lots settled"). On mainnet they show 0 even though the log store holds 21 Bid and 5 Hammer events.
+
+1. useCountUp in src/pages/Landing.tsx: the IntersectionObserver tick closure captures `target` from the first render (0, before logs load). The target-change effect returns early while the element isn't visible yet. So when logs load before the user scrolls to the stats, the count animates to the stale 0 and never updates.
+   Fix: keep the latest target in a ref (targetRef.current = target on every render). The intersection animation reads targetRef.current, and the target-change effect animates from the current displayed value to the new target once visible. Also handle the case where the element is already in view on mount.
+2. Double counting: bidLogs = logs where name is 'Bid' OR 'RelayedBid'. Every gasless bid emits both events, so bids, volume and distinct bidders are inflated.
+   Fix: count bids, volume and bidders from 'Bid' events only. Gasless count = 'RelayedBid' events.
+   Check src/pages/Proof.tsx (and anything else using the log store) for the same double count, and fix it the same way.
+Change nothing else. Typecheck, lint and build. Report the diff.
