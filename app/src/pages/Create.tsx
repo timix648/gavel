@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi'
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, type UseReadContractReturnType } from 'wagmi'
 import { erc20Abi } from 'viem'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
@@ -181,17 +181,20 @@ export default function Create() {
   const [agentIdInput, setAgentIdInput] = useState('')
   const [regStep, setRegStep] = useState<'idle'|'registering'|'linking'>('idle')
 
-  const { data: isLinked, refetch: refetchLinked } = useReadContract({
+  const { data: isLinked, isLoading: isLinkedLoading, isError: isLinkedError, refetch: refetchLinked } = useReadContract({
     address: REPUTATION_WRITER_ADDRESS, abi: REPUTATION_WRITER_ABI, functionName: 'sellerRegistered',
-    args: address ? [address] : undefined, chainId: CHAIN_ID, query: { enabled: !!address },
-  })
+    args: address ? [address] : undefined, chainId: CHAIN_ID,
+    query: { enabled: !!address, retry: 3, retryDelay: 1500 },
+  }) as UseReadContractReturnType & { data: boolean | undefined }
   const { data: linkedAgentId } = useReadContract({
     address: REPUTATION_WRITER_ADDRESS, abi: REPUTATION_WRITER_ABI, functionName: 'sellerAgentId',
-    args: address ? [address] : undefined, chainId: CHAIN_ID, query: { enabled: !!address && !!isLinked },
+    args: address ? [address] : undefined, chainId: CHAIN_ID,
+    query: { enabled: !!address && isLinked === true, retry: 3, retryDelay: 1500 },
   })
   const { data: cleanSalesCount } = useReadContract({
     address: REPUTATION_WRITER_ADDRESS, abi: REPUTATION_WRITER_ABI, functionName: 'cleanSalesView',
-    args: address ? [address] : undefined, chainId: CHAIN_ID, query: { enabled: !!address },
+    args: address ? [address] : undefined, chainId: CHAIN_ID,
+    query: { enabled: !!address, retry: 3, retryDelay: 1500 },
   })
 
   // ── Gas + tx hooks ──────────────────────────────────────────────────────────
@@ -691,11 +694,25 @@ export default function Create() {
           {kind === LotKind.OFFCHAIN && (
             <div className="rounded-panel border border-line bg-surface p-5 space-y-4">
               <div className="flex items-center gap-2">
-                {Boolean(isLinked) && <CheckCircle size={16} weight="fill" className="text-good" />}
+                {isLinked === true && <CheckCircle size={16} weight="fill" className="text-good" />}
                 <p className="font-semibold text-sm text-ink">Seller reputation</p>
               </div>
 
-              {Boolean(isLinked) ? (
+              {/* State 1: loading or retrying — never show register steps */}
+              {(isLinkedLoading || (isLinkedError && isLinked === undefined)) ? (
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs text-ink-3">Checking your reputation on-chain...</p>
+                  {isLinkedError && (
+                    <button
+                      onClick={() => void refetchLinked()}
+                      className="text-xs text-accent-text hover:underline underline-offset-2 shrink-0"
+                    >
+                      Retry
+                    </button>
+                  )}
+                </div>
+              ) : isLinked === true ? (
+                /* State 2: confirmed linked */
                 <div className="space-y-1 text-sm">
                   <p className="text-ink-3">Agent ID: <span className="font-mono text-ink">{linkedAgentId != null ? (linkedAgentId as bigint).toString() : '...'}</span></p>
                   <p className="text-ink-3">
@@ -704,6 +721,7 @@ export default function Create() {
                   </p>
                 </div>
               ) : (
+                /* State 3: confirmed NOT linked (read returned false) */
                 <div className="space-y-4">
                   <p className="text-sm text-ink-2">Register an on-chain identity to build reputation. After 3 clean sales, your bond drops to 50%.</p>
                   <div className="space-y-2">

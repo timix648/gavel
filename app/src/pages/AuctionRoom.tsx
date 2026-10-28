@@ -278,6 +278,18 @@ export default function AuctionRoom() {
     setGaslessMode(nativeBal.value < 10_000_000_000_000_000n)
   }, [nativeBal])
 
+  // ── Bidder USDC wallet balance (ERC-20, 6 dec) ─────────────────────────────
+  // Used to gate the bid button: wallet must hold enough for the top-up (or full
+  // bid when there is no credit). We read the ERC-20 balanceOf, NOT useBalance,
+  // because on Arc native === USDC and useBalance returns the native view which
+  // uses more decimals than the ERC-20 view, causing a 10^12 scale mismatch.
+  const { data: walletUsdcRaw, refetch: refetchWalletUsdc } = useReadContract({
+    address: USDC_ADDRESS, abi: erc20Abi, functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    chainId: CHAIN_ID, query: { enabled: !!address },
+  })
+  const walletUsdc = (walletUsdcRaw) ?? undefined
+
   // ── Bid flow ───────────────────────────────────────────────────────────────
   const nextBid = lot ? (lot.highestBid === 0n ? lot.reserve : lot.highestBid + lot.minIncrement) : 0n
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
@@ -315,7 +327,7 @@ export default function AuctionRoom() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (bidConfirming && bidStep === 'bidding') setBidStep('confirming')
-    if (bidOk && (bidStep === 'bidding' || bidStep === 'confirming')) { toast.success('Bid placed'); setBidStep('idle'); void fetchLot() }
+    if (bidOk && (bidStep === 'bidding' || bidStep === 'confirming')) { toast.success('Bid placed'); setBidStep('idle'); void fetchLot(); void refetchWalletUsdc() }
     if (bidErr && (bidStep === 'bidding' || bidStep === 'confirming')) { setBidError(parseOnchainError(bidRawErr)); setBidStep('idle') }
   }, [bidOk, bidErr, bidConfirming])
 
@@ -457,7 +469,7 @@ export default function AuctionRoom() {
 
   const { writeContract: claimTx, data: claimHash } = useWriteContract()
   const { isLoading: claimLoading, isSuccess: claimOk } = useWaitForTransactionReceipt({ hash: claimHash })
-  useEffect(() => { if (claimOk) toast.success('USDC claimed') }, [claimOk])
+  useEffect(() => { if (claimOk) { toast.success('USDC claimed'); void refetchWalletUsdc() } }, [claimOk, refetchWalletUsdc])
 
   // ── v7: lot kind, asset address, escrow state ────────────────────────────
   const { data: rawLotKind } = useReadContract({
@@ -570,6 +582,18 @@ export default function AuctionRoom() {
   const bondDays      = lot.settledAt > 0n ? Math.max(0, 7 - Math.floor((chainNowSec - Number(lot.settledAt)) / 86400)) : 7
   const isBidBusy     = bidStep !== 'idle'
   const urgent        = isLive && secs < 10
+
+  // ── Wallet balance gate ────────────────────────────────────────────────────
+  // amountNeeded = topUp when there is credit; full nextBid when there is none.
+  // Credit-only bids (topUp===0) call direct bid() and don't move wallet funds,
+  // so we never disable them for a low wallet balance.
+  const amountNeeded  = (() => {
+    if (!address || claimableAmt >= nextBid) return 0n   // credit covers all — no wallet spend
+    return nextBid - claimableAmt                        // topUp, or full nextBid when credit=0
+  })()
+  // Disable bid buttons only when we have a definitive balance AND it is too low.
+  const walletTooLow  = walletUsdc !== undefined && amountNeeded > 0n && walletUsdc < amountNeeded
+  const walletShortBy = walletTooLow ? amountNeeded - (walletUsdc ?? 0n) : 0n
 
   // v7 derived
   const lotKind       = rawLotKind !== undefined ? (rawLotKind as number) as LotKind : LotKind.OFFCHAIN
@@ -774,7 +798,7 @@ export default function AuctionRoom() {
                   )}
                   <button
                     onClick={handleBid}
-                    disabled={isBidBusy}
+                    disabled={isBidBusy || walletTooLow}
                     className="w-full py-3.5 rounded-btn font-semibold text-base bg-accent text-accent-ink hover:opacity-90 active:translate-y-px disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                   >
                     {bidStep === 'approving'  && <><Spinner size={16} className="animate-spin" />Approving...</>}
@@ -812,11 +836,20 @@ export default function AuctionRoom() {
                     </p>
                   )}
 
+                  {/* Wallet balance warning */}
+                  {walletTooLow && (
+                    <p className="flex items-start gap-1.5 text-sm text-warn">
+                      <Warning size={14} className="mt-0.5 shrink-0" />
+                      You need {fmtUsdc(walletShortBy)} more but your wallet has {fmtUsdc(walletUsdc ?? 0n)}. Add USDC to bid.
+                    </p>
+                  )}
+
                   {/* Gasless toggle */}
                   {!!address && (
                     <button
                       onClick={() => setGaslessMode(g => !g)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-btn bg-surface-2 hover:bg-line transition-colors text-sm"
+                      disabled={walletTooLow}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-btn bg-surface-2 hover:bg-line transition-colors text-sm disabled:opacity-50"
                       aria-pressed={gaslessMode}
                     >
                       <span className="flex items-center gap-2 text-ink-2">

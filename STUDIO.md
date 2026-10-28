@@ -651,3 +651,10 @@ Usage: 74% to 78%.
 
 ### Manual fix 25 (28 Oct 2026, Studio unavailable: "fetch failed" loading the thread twice)
 The landing stats showed 0 despite 21 bids in the log store. `useCountUp`'s observer animated to the target captured at mount (0); if logs loaded before the stats scrolled into view, the target-change effect had already returned early. The hook now keeps the latest target in a ref and animates from the shown value. The landing page also double-counted gasless bids (`Bid` + `RelayedBid`), so bids, volume and bidders now come from `Bid` only, with bidders compared case-insensitively. `/proof` already counted correctly. To be synced to Studio when it is reachable.
+
+## Turn 34 (28 Oct): reputation flicker, wallet check on bids, live mainnet strip
+Prompt: [prompts/turn34.txt](prompts/turn34.txt). Studio also received the hand-fixed Landing.tsx (manual fix 25), so the Studio project and the shipped code match again.
+- Seller reputation panel: three states. While the `sellerRegistered` read is loading or rate-limited it shows "Checking your reputation on-chain..." with Retry, instead of falling back to the register steps. Reads retry 3 times.
+- Auction room: reads the bidder's USDC with the ERC-20 `balanceOf` (6 decimals) and disables both bid buttons when the wallet cannot cover the top-up, with "You need $X more but your wallet has $Y".
+- New `LiveStatsStrip` on Landing and Lots: live bid volume, bids, gasless bids and lots settled from on-chain events, hidden until loaded.
+What I corrected: Studio's pull also rewrote an old v7 address into keeper/index.ts and touched unrelated files; I kept only the five intended files. Manual fix 26: the strip read "$2136.42 USDC bid", changed to "$2136.42 in bids".

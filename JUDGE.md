@@ -17,7 +17,7 @@ Live app: https://gavel-alpha.vercel.app · Live proof (no wallet): https://gave
 |---|---|
 | AuctionHouse, source verified (exact match) | [explorer](https://explorer.arc.io/address/0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6) · [Sourcify](https://repo.sourcify.dev/5042/0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6) |
 | Mainnet deploy (v8) | [0xe57ba214…](https://explorer.arc.io/tx/0xe57ba2140d97356597d43894f18f8119288febc62ed92e0558650dd7eb7327d2) |
-| Real trading on v8: 8 lots (off-chain and EURC), 32 bids (23 gasless), 5 wallets, 846 USDC bid volume, house and vault back to 0 | [PROOF.md](PROOF.md) |
+| Real trading on v8: 14 lots (off-chain and EURC), 60 bids (47 gasless), 6 bidder wallets, 2,136 USDC bid volume, house and vault back to 0 | [PROOF.md](PROOF.md) |
 | Every transaction | [PROOF.md](PROOF.md) |
 
 ## Receipt block
@@ -27,7 +27,7 @@ Live app: https://gavel-alpha.vercel.app · Live proof (no wallet): https://gave
 | Tests | 83 Foundry. Also Slither (no medium/high) and an Arc Studio review ([AUDIT.md](AUDIT.md)) |
 | Gas | bid 115,569 (≈ $0.003) · gasless bid 144,648 (≈ $0.004) · settle 128,668 (≈ $0.003) · list 427,667 (≈ $0.011) |
 | Automated activity | none. Every lot is listed by a real seller. |
-| Built in Arc Studio | 27 turns, every one logged with what Studio got wrong ([STUDIO.md](STUDIO.md)) |
+| Built in Arc Studio | 34 turns, every one logged with what Studio got wrong ([STUDIO.md](STUDIO.md)) |
 | Keys held by the app | 1: a small gasless-relayer hot wallet with rate limits and a daily cap |
 
 ## Reproduce (read-only)

@@ -264,3 +264,12 @@ EURC, cirBTC, LINK, XAUM, VIRTUAL, GBPA, MXNB, QCAD, TRYB and WBRL are allowlist
 v8 totals after this session (recomputed by `audit.py` from every event since the deploy block):
 - 8 lots, **32 bids (23 gasless)**, 5 distinct bidder wallets, **846 USDC of bid volume**.
 - The AuctionHouse holds **0 USDC**, the vault holds **0 EURC**, and claimable balances are **0** across all 17 addresses seen.
+
+## Third v8 session: off-chain lots (28 Oct 2026), audited on-chain
+Lots 8 to 13 were off-chain lots listed by four different sellers and sold to four different winners, with hammer prices of 64.01, 64.00, 69.70, 84.67, 84.47 and 70.00 USDC. Each seller's bond was held after the sale and released on confirmed delivery, and every escrowed payment was paid straight to the seller's wallet (`PaidOut`, pushed=true, 10 of 10).
+
+v8 totals after this session (recomputed by `audit.py` from all 279 events in 140 transactions since the deploy block):
+- **14 lots, 13 sold, 1 unsold** (lot 5, asset returned to the seller).
+- **60 bids, 47 of them gasless**, from 6 distinct bidder wallets; 24 bids reused outbid credit (top-up).
+- **2,136.42 USDC of bid volume**; 673.40 USDC of hammer value.
+- No disputes. The AuctionHouse holds **0 USDC**, the vault holds **0 EURC**, and claimable balances are **0** across all 18 addresses seen.

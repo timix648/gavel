@@ -82,7 +82,7 @@ I was honest in STUDIO.md about where I worked outside Studio. Twelve fixes were
 
 Deploying Gavel cost 0.082 USDC in gas. There are no automated or house auctions: every lot on mainnet is listed by a real seller and bid on by real people. [PROOF.md](PROOF.md) lists every contract and transaction hash, and the live /proof page reads every market event straight from chain, with no wallet needed, totalling USDC moved, bids placed, distinct bidders and lots settled.
 
-First real trading session (28 Oct, audited on-chain): 4 lots, **20 bids (13 gasless) from 5 wallets, 583 USDC of bid volume**. Every one of the 488 USDC that went in came back out to the right wallets; the contract ended at 0. Some participants received USDC from me for testing, and that is disclosed in PROOF.md.
+Mainnet trading on v8 so far (audited on-chain from every event): **14 lots, 60 bids (47 gasless) from 6 wallets, 2,136 USDC of bid volume, 13 lots sold**. Every USDC that went in came back out to the right wallets; the contract, the vault and every claimable balance ended at 0. Some participants received USDC from me for testing, and that is disclosed in PROOF.md.
 
 ## Why it fits what Arc wants
 

@@ -16,6 +16,7 @@ import { fmtAssetLabel, setTokenMetaCache, getTokenMetaCache } from '../hooks/us
 import { LotKind } from '../abi'
 import { fmtUsdc, shortAddr } from '../utils'
 import { useLogStore } from '../useLogs'
+import LiveStatsStrip from '../components/LiveStatsStrip'
 
 const LOBBY_WINDOW = 24
 /** Minimum gap between lobby refreshes, whatever the block rate. */
@@ -305,7 +306,12 @@ export default function Lobby() {
   const endedVisible = showAllEnded ? ended : ended.slice(0, 6)
 
   return (
-    <div className="py-6 space-y-8">
+    <div className="space-y-0">
+
+      {/* ── Live mainnet stats strip (hidden until logs loaded) ─────────── */}
+      <LiveStatsStrip />
+
+      <div className="py-6 space-y-8">
 
       {/* ── Page title ──────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -428,6 +434,7 @@ export default function Lobby() {
         <span>Built on {NETWORK_LABEL}</span>
         <StudioWatermark />
       </footer>
+      </div>
     </div>
   )
 }

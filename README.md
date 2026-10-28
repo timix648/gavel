@@ -9,6 +9,8 @@ bidder's USDC is released in the same transaction, and at the hammer the lot and
 
 [![Live on Arc mainnet](https://img.shields.io/badge/Live-Arc_mainnet-06b6d4?style=for-the-badge)](https://gavel-alpha.vercel.app)
 [![For reviewers](https://img.shields.io/badge/For-reviewers-3ddc84?style=for-the-badge)](JUDGE.md)
+[![Mainnet volume](https://img.shields.io/badge/Bid_volume-2%2C136_USDC-f97316?style=for-the-badge)](PROOF.md)
+[![Bids](https://img.shields.io/badge/Bids-60_(47_gasless)-8b5cf6?style=for-the-badge)](PROOF.md)
 [![Demo video](https://img.shields.io/badge/Demo-video-FF0000?style=for-the-badge)](VIDEO_URL)
 [![Built in Arc Studio](https://img.shields.io/badge/Built_in-Arc_Studio-8b5cf6?style=for-the-badge)](https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed)
 [![AuctionHouse](https://img.shields.io/badge/AuctionHouse-0xA51A...dEa6-4ea1ff?style=for-the-badge)](https://explorer.arc.io/address/0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6)
@@ -22,6 +24,23 @@ bidder's USDC is released in the same transaction, and at the hammer the lot and
 ![license](https://img.shields.io/badge/license-MIT-blue?style=flat)
 
 </div>
+
+## Track record on Arc mainnet
+
+Every number below is recomputed from on-chain events by `audit.py` and shown live, with no wallet needed, at [/proof](https://gavel-alpha.vercel.app/proof).
+
+| | |
+|---|---|
+| Bid volume | **2,136 USDC** |
+| Bids | **60**, of which **47 gasless** (one signature, no gas) |
+| Lots | **14** listed, **13** sold, across off-chain goods and escrowed EURC |
+| Distinct bidder wallets | 6 |
+| Bids funded by outbid credit (top-up) | 24 |
+| Disputes | 0 |
+| Left in the contract after every sale | **0 USDC, 0 EURC, 0 unclaimed** |
+
+Some participants were funded by the author for testing; this is disclosed in [PROOF.md](PROOF.md).
+
 
 ---
 

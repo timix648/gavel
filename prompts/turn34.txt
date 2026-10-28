@@ -1,0 +1,16 @@
+Turn 34. Frontend only. Do not touch any contract, the relayer, or how events are loaded or counted.
+
+0. Sync: src/pages/Landing.tsx is uploaded with a hand fix made while Studio was unreachable (useCountUp keeps the latest target in a ref; bids, volume and bidders count 'Bid' events only, gasless = 'RelayedBid'). Keep it exactly as uploaded.
+
+1. Seller reputation panel in src/pages/Create.tsx flickers. After a refresh it sometimes shows the linked agentId in green and sometimes shows the "Register on IdentityRegistry" steps. Cause: while the sellerRegistered read is loading, or when the RPC rate-limits it and it errors, isLinked is undefined and the panel falls into the not-linked branch.
+   Fix: render three states. While loading or errored, show a small "Checking your reputation on-chain..." line (with a Retry button that calls refetch on error) and never show the register steps. Show the register steps only when the read returned false. Add retry: 3 and a short retryDelay to the sellerRegistered, sellerAgentId and cleanSalesView reads. Keep the linked view as is.
+
+2. src/pages/AuctionRoom.tsx: the bid button does not check the wallet. Example: a bidder with $24.01 credit needs $20.00 extra but the wallet holds 12.97 USDC; the button is still enabled and the bid fails after signing.
+   Fix: read the bidder's USDC balance with the USDC ERC-20 balanceOf (6 decimals, address 0x3600000000000000000000000000000000000000), not the native balance. If the wallet holds less than the amount that must leave it (the top-up, or the full bid when there is no credit), disable both bid buttons and show "You need $X more but your wallet has $Y. Add USDC to bid." Refetch the balance after each bid and claim.
+
+3. Show the mainnet track record in the places a visitor sees first, computed live from the existing log store with the same counting as Landing (Bid events only):
+   a. A slim strip near the top of the Landing hero: "Live on Arc mainnet: {volume} USDC bid · {bids} bids ({gasless} gasless) · {lots settled} lots settled · contract holds 0 after every sale", linking to /proof.
+   b. The same one-line strip at the top of the Lots page.
+   Hide the strip until the logs have loaded (never flash zeros).
+
+Change nothing else. Typecheck, lint and build. Report the diff.

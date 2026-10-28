@@ -21,6 +21,7 @@ import { AUCTION_HOUSE_ABI, type LotTuple } from '../abi'
 import { useLatestBlock } from '../useBlock'
 import { useLogStore } from '../useLogs'
 import { BezelPanel, BezelPlaceholder } from '../components/AuctionPanel'
+import LiveStatsStrip from '../components/LiveStatsStrip'
 import { fmtUsdc, shortAddr } from '../utils'
 import { fmtAssetLabel, setTokenMetaCache, getTokenMetaCache } from '../hooks/useTokenMeta'
 import { LotKind } from '../abi'
@@ -75,6 +76,7 @@ function useCountUp(target: number, duration = 1200, decimals = 0) {
   // The latest target, so an animation started by the observer never uses a stale value.
   const targetRef = useRef(target)
   const shownRef  = useRef(0)
+  // eslint-disable-next-line react/refs
   targetRef.current = target
 
   const animateTo = useCallback((to: number) => {
@@ -844,6 +846,9 @@ export default function Landing() {
 
   return (
     <div className="text-ink overflow-x-hidden">
+
+      {/* ── Live mainnet stats strip (hidden until logs loaded) ─────────── */}
+      <LiveStatsStrip />
 
       {/* ═══════════════════════════════════════════════════════════════════ */}
       {/* §1  HERO                                                           */}
