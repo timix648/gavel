@@ -1,0 +1,7 @@
+Turn 28: fix the relayer /stats counter. It still returns 0 on mainnet even though 13 gasless bids happened.
+Cause: in relayer/handler.ts the /stats branch calls getLogs over 50,000 blocks in one request, but the Arc RPC caps eth_getLogs at 10,000 blocks. The request errors, and the catch silently returns { relayedBids: 0 }.
+Fix:
+- Count RelayedBid events from the v8 deploy block 28077831 (const DEPLOY_BLOCK = 28077831n, overridable by env AUCTION_HOUSE_DEPLOY_BLOCK) to head, in 9,000-block chunks.
+- Cache the result in module scope for 60 seconds so repeated calls don't rescan.
+- On error, return HTTP 502 with { error } instead of a fake 0.
+Change nothing else. Run typecheck and lint and report the diff.

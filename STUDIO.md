@@ -627,3 +627,6 @@ It made the two requested changes:
 It also caught a bug I'd missed: the relayer's `RelayedBid` ABI lacked the `address indexed relayer` parameter, so the event hash was wrong and the gasless counter always showed 0.
 
 Usage: 68% → 70%. From now on, every change goes through Studio.
+
+## Turn 28 (28 Oct 2026): gasless counter fixed
+The relayer `/stats` scanned 50,000 blocks in one request. The RPC caps requests at 10,000, so it errored and the error was hidden as "0". Studio made it count from the v8 deploy block in 9,000-block chunks, cache the result for 60 s, and return a real 502 on error.

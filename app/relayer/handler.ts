@@ -40,6 +40,10 @@ const RECEIPT_TIMEOUT_MS = 15_000
 // Per-address rate limit: 5 bids per minute
 const RATE_LIMIT_WINDOW_MS = 60_000
 const RATE_LIMIT_MAX = 5
+// Deploy block for the live v8 contract — scan starts here so we never miss events
+const DEPLOY_BLOCK = BigInt(process.env.AUCTION_HOUSE_DEPLOY_BLOCK ?? '28077831')
+const STATS_CHUNK  = 9_000n   // stay under the 10,000-block RPC cap
+const STATS_TTL_MS = 60_000   // cache the count for 60 seconds
 
 // ── ABI ────────────────────────────────────────────────────────────────────────
 
@@ -103,9 +107,30 @@ function checkRateLimit(addr: string): { ok: boolean; reason?: string } {
   return { ok: true }
 }
 
-// ── Stats ──────────────────────────────────────────────────────────────────────
+// ── Stats cache ────────────────────────────────────────────────────────────────
 
-// B10: stats come from on-chain RelayedBid events, not in-memory counters
+// Counts all RelayedBid events from DEPLOY_BLOCK in 9,000-block chunks.
+// Cached for STATS_TTL_MS so repeated front-end polls don't hammer the RPC.
+let statsCache: { count: number; expiry: number } | null = null
+
+async function fetchRelayedBidCount(): Promise<number> {
+  if (statsCache && Date.now() < statsCache.expiry) return statsCache.count
+  const relayedBidEvent = { name: 'RelayedBid', type: 'event', inputs: [
+    { name: 'lotId',   type: 'uint256', indexed: true  },
+    { name: 'bidder',  type: 'address', indexed: true  },
+    { name: 'relayer', type: 'address', indexed: true  },
+    { name: 'amount',  type: 'uint256', indexed: false },
+  ]} as const
+  const head = await publicClient.getBlockNumber()
+  let count = 0
+  for (let from = DEPLOY_BLOCK; from <= head; from += STATS_CHUNK) {
+    const to = from + STATS_CHUNK - 1n < head ? from + STATS_CHUNK - 1n : head
+    const logs = await publicClient.getLogs({ address: AH_ADDRESS, event: relayedBidEvent, fromBlock: from, toBlock: to })
+    count += logs.length
+  }
+  statsCache = { count, expiry: Date.now() + STATS_TTL_MS }
+  return count
+}
 
 // ── Handler ────────────────────────────────────────────────────────────────────
 
@@ -125,17 +150,11 @@ export async function handle(req: Request): Promise<Response> {
 
     if (req.method === 'GET' && url.pathname.endsWith('/stats')) {
       try {
-        const head = await publicClient.getBlockNumber()
-        const fromBlock = head > 50_000n ? head - 50_000n : 0n
-        const logs = await publicClient.getLogs({
-          address: AH_ADDRESS,
-          event: { name: 'RelayedBid', type: 'event', inputs: [{ name: 'lotId', type: 'uint256', indexed: true }, { name: 'bidder', type: 'address', indexed: true }, { name: 'relayer', type: 'address', indexed: true }, { name: 'amount', type: 'uint256', indexed: false }] },
-          fromBlock,
-          toBlock: head,
-        })
-        return Response.json({ relayedBids: logs.length }, { headers: corsHeaders })
-      } catch {
-        return Response.json({ relayedBids: 0 }, { headers: corsHeaders })
+        const relayedBids = await fetchRelayedBidCount()
+        return Response.json({ relayedBids }, { headers: corsHeaders })
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        return Response.json({ error: msg }, { status: 502, headers: corsHeaders })
       }
     }
 
