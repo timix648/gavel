@@ -8,15 +8,15 @@ Deadline: 1 Nov 2026 (DoraHacks: 2 Nov 04:59 UTC). Earlier submissions get earli
 | Arc Studio project URL | https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed |
 | Live app | https://gavel-alpha.vercel.app |
 | Contract addresses | AuctionHouse 0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6 (+ the 3 others in README) |
-| Example tx + explorer link | _first live mainnet bid or settle_ https://explorer.arc.io/tx/... |
+| Example tx + explorer link | Lot 11 settle, 84.67 USDC: https://explorer.arc.io/tx/0xe01c69e1dacc7db88511e1514d72b9ad7047829e5f735c15a5f46d99c99b6652 |
 | Public repo | https://github.com/timix648/gavel |
 | Video walkthrough | _after recording_. Must show the build in Arc Studio AND a mainnet transaction |
 | Short description | Use "One line" + "What Gavel does" from WRITEUP.md |
 | Builder profile | Your GitHub / X / Farcaster |
 
 ## Rules check (from the DoraHacks page)
-- Built in Arc Studio: yes, 22 turns. Hand fixes are disclosed in STUDIO.md and synced back to Studio.
-- Deployed to Arc mainnet and moved USDC through contract + app: deployed. **Needs at least one real bid before you submit.**
+- Built in Arc Studio: yes, 35 turns. Hand fixes are disclosed in STUDIO.md and synced back to Studio.
+- Deployed to Arc mainnet and moved USDC through contract + app: yes: 14 lots, 60 bids, 2,136 USDC of bid volume on v8 (PROOF.md).
 - Not testnet-only, not a mockup: yes.
 - Not already funded by Circle/Arc: yes.
 - Pseudonymous OK; verification only after selection.
@@ -24,7 +24,7 @@ Deadline: 1 Nov 2026 (DoraHacks: 2 Nov 04:59 UTC). Earlier submissions get earli
 
 ## Video script (about 3 min)
 1. **0:00–0:20 Hook.** The live room with the clock under 10 s; a bid lands and the clock jumps back to 10. Say: "A real auction, settling real dollars, on a chain where a bid is final in under a second."
-2. **0:20–1:10 Arc Studio.** Open the Studio project. Scroll the turn history. Show turn 1 (contracts), turn 4 (gasless; Studio caught the lot-binding bug), and turn 21 (security review, 37/37 tests). Open STUDIO.md briefly.
+2. **0:20–1:10 Arc Studio.** Open the Studio project. Scroll the turn history. Show turn 1 (contracts), turn 4 (gasless; Studio caught the lot-binding bug), turn 21 (security review), turn 23 (v7, where I caught a critical escrow bug in Studio's code) and turn 34 (the reputation fix). Open STUDIO.md briefly.
 3. **1:10–2:10 Mainnet demo.**
    - Create a lot (title, $0.10 reserve, 10 min).
    - From a second wallet, bid normally.

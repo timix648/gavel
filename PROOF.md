@@ -4,22 +4,30 @@ Every hash below was checked independently with `arc-cast receipt <hash> status`
 (Arc Foundry), not taken from Studio's output. The live /proof page reads the same events
 straight from chain.
 
-## Arc mainnet (chain 5042)
+## Arc mainnet (chain 5042): current state (v8)
 
-_To be filled after the mainnet deploy._
+| Contract | Address |
+|---|---|
+| AuctionHouse v8 | [`0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6`](https://explorer.arc.io/address/0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6) (block 28077831) |
+| GavelLot | `0x871aDBA28fC21240E7020894292707e17e061222` |
+| LotVault | `0x226e779B81c6365a4b8f62c8FCAeB71799f54269` |
+| ReputationWriter | `0x98719b8AA176C0bB07a6863880F11be8f5bF1569` |
 
-| Contract | Address | Deploy tx |
-|---|---|---|
-| AuctionHouse | | |
-| ReputationWriter | | |
-| GavelLot | | |
-| LotVault | | |
+All four are a Sourcify exact match. Totals on v8, recomputed by `audit.py` from every event since the deploy block (29 Oct 2026):
 
-Transaction count, distinct wallets and USDC moved: see the live /proof page and the
-table that will go here.
+| | |
+|---|---|
+| Lots | 14 listed, 13 sold, 1 unsold (asset returned) |
+| Bids | 60, of which 47 gasless; 24 reused outbid credit |
+| Distinct bidder wallets | 6 |
+| Bid volume | 2,136.42 USDC |
+| Hammer value | 673.40 USDC |
+| Disputes | 0 |
+| Left in the AuctionHouse / vault / claimable | 0 USDC / 0 EURC / 0 |
 
-Funding disclosure: _list any participants funded to remove the onboarding barrier, e.g.
-"N participants were sent 1 USDC on Arc; all bids were their own decisions."_
+Example settle (lot 11, 84.67 USDC, lot and payment in one transaction): [0xe01c69e1…6652](https://explorer.arc.io/tx/0xe01c69e1dacc7db88511e1514d72b9ad7047829e5f735c15a5f46d99c99b6652).
+
+Session-by-session detail is under "v8 on Arc mainnet" below. Everything before it (testnet, v6, v7) is development history; v6 and v7 stay readable on chain but the app lists only on v8.
 
 ## Arc testnet (chain 5042002) - development history
 
@@ -126,7 +134,7 @@ End-to-end on Studio v6, lot #1 (test wallets funded by us):
 | B claims 0.15 refund | 0xdc74682e7508bd5553afa9c418dcad1c535e926789c9a09977efa51e9f03d846 |
 | A confirms delivery | 0xa7975e0b66c2afff85655d0171799990acb964f39cce10808d2a94e12258f9c3 |
 
-# ARC MAINNET (chain 5042)
+# ARC MAINNET history: v6 (superseded)
 
 Deployed 25 Oct 2026 with arc-forge from the owner's wallet (Studio deploys to testnet only). It is the same source Studio tested in turn 21 (37/37), and the deploy script re-ran all 37 tests before deploying.
 
@@ -166,7 +174,7 @@ Seller `0xBa6A…dA0F` (the builder) and two bidders, `0x1d94…1038` and `0x5e5
 
 USDC through the contract: 4.75 in (1.00 bond + 1.00 + 1.25 + 1.50 bids), 4.75 out. NFT #1 is owned by the winner `0x1d94…1038`.
 
-# v7 on Arc mainnet (27 Oct 2026)
+# v7 on Arc mainnet (27 Oct 2026, superseded by v8)
 
 Deployed by the owner with deploy-mainnet-v7.sh (arc-forge, interactive key). The script re-ran the 59 tests before deploying. All four contracts are a Sourcify exact match.
 
@@ -240,7 +248,7 @@ Earlier contracts stay readable: v6 `0x24D8…56dd` (lot #0, Oct 25) and v7 `0x6
 | 2 | 0x5e50 | 24 / 24 | 59 | 0xBa6A | 6 (4) | confirmed; seller paid 83 directly |
 | 3 | 0x5e50 | 7 / 7 | 42 | 0xBa6A | 8 (6) | confirmed; seller paid 49 directly |
 
-Totals: **20 bids, 13 of them gasless, 5 distinct bidder wallets, 583 USDC of bid volume.** Top-up bidding was used 6 times, reusing 147 USDC of outbid refunds without new wallet transfers.
+Session totals: **20 bids, 13 of them gasless, 5 distinct bidder wallets, 583 USDC of bid volume.** Top-up bidding was used 6 times, reusing 147 USDC of outbid refunds without new wallet transfers.
 
 **Reconciliation:**
 - In: 52 (bonds) + 436 (new bid money) = **488 USDC**.
@@ -261,7 +269,7 @@ EURC, cirBTC, LINK, XAUM, VIRTUAL, GBPA, MXNB, QCAD, TRYB and WBRL are allowlist
 | 6 | 17.958786 EURC | 0x1d94 → 0x5e50 | 1 (1) | Sold for 20.00; the winner claimed the EURC; the seller withdrew 20.00 |
 | 7 | 17.958803 EURC | 0x5e50 → 0x1d94 | 12 (8) | A bidding war from 20.05 to 24.55 in 0.50 steps, 10 of the bids funded by top-up credit; the winner claimed the EURC; the seller withdrew 24.55; the outbid wallet withdrew 24.05 |
 
-v8 totals after this session (recomputed by `audit.py` from every event since the deploy block):
+v8 running totals at that point:
 - 8 lots, **32 bids (23 gasless)**, 5 distinct bidder wallets, **846 USDC of bid volume**.
 - The AuctionHouse holds **0 USDC**, the vault holds **0 EURC**, and claimable balances are **0** across all 17 addresses seen.
 

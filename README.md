@@ -11,7 +11,6 @@ bidder's USDC is released in the same transaction, and at the hammer the lot and
 [![For reviewers](https://img.shields.io/badge/For-reviewers-3ddc84?style=for-the-badge)](JUDGE.md)
 [![Mainnet volume](https://img.shields.io/badge/Bid_volume-2%2C136_USDC-f97316?style=for-the-badge)](PROOF.md)
 [![Bids](https://img.shields.io/badge/Bids-60_(47_gasless)-8b5cf6?style=for-the-badge)](PROOF.md)
-[![Demo video](https://img.shields.io/badge/Demo-video-FF0000?style=for-the-badge)](VIDEO_URL)
 [![Built in Arc Studio](https://img.shields.io/badge/Built_in-Arc_Studio-8b5cf6?style=for-the-badge)](https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed)
 [![AuctionHouse](https://img.shields.io/badge/AuctionHouse-0xA51A...dEa6-4ea1ff?style=for-the-badge)](https://explorer.arc.io/address/0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6)
 
@@ -145,7 +144,7 @@ Only allowlisted token contracts can be listed. A hostile token could accept a d
 | **Native USDC implements EIP-3009** | One-signature gasless bids through `receiveWithAuthorization` in [`bidWithAuthorization`](onchain/contracts/AuctionHouse.sol). |
 | **No public mempool front-running** | A winning bid cannot be observed and outbid by a bot before it lands, which matters most in the final seconds. |
 | **Memo contract** | Settlement is routed through Arc's Memo contract (`0x5294E992...e505`) with the lot ID as the memo ID, producing a reconcilable on-chain receipt for every sale ([`AuctionRoom.tsx`](app/src/pages/AuctionRoom.tsx)). |
-| **USDC blocklist** | Transfers to or from a blocklisted address revert. That is why every payout in Gavel is a *pull*: credits go into `claimable` and each person calls `claim()`. One blocklisted bidder cannot freeze an auction for everyone else (test 8). |
+| **USDC blocklist** | Transfers to or from a blocklisted address revert. That is why outbid refunds go into `claimable` (withdrawn with `claim()` or reused for the next bid), and why escrow payouts are pushed to the wallet with a fallback to `claimable` if the transfer fails. One blocklisted address cannot freeze an auction for everyone else (test 8). |
 | **ERC-8004 on mainnet** | [`ReputationWriter`](onchain/contracts/ReputationWriter.sol) records clean sales against a seller's ERC-8004 identity on the mainnet ReputationRegistry. |
 | **Block timestamps are non-decreasing, not strictly increasing** | `block.timestamp` is used only for deadline comparisons, never to order bids. The frontend clock runs on chain time, not the browser clock (a PC clock 11 seconds behind the chain was one of our real bugs). |
 | **`PREVRANDAO` is always 0** | Gavel needs no randomness, and nothing in the protocol relies on it. |
@@ -307,7 +306,7 @@ Bidding should feel like pressing a button, not like operating a wallet. With a 
    `nonce = keccak256(abi.encode(AuctionHouse, chainId, lotId, amount, salt))`.
 2. The bidder signs an EIP-712 `ReceiveWithAuthorization` for USDC: `from = bidder`, `to = AuctionHouse`, `value = amount`, `validAfter`, `validBefore`, `nonce`.
 3. The app posts the signature and parameters to the relayer.
-4. The relayer checks that the lot is live, that the amount is a valid next bid, that the bidder holds enough USDC, and the per-address rate limit and daily cap. Then it calls `bidWithAuthorization` and pays the gas.
+4. The relayer checks that the lot is live, that the amount is a valid next bid, that the bidder holds enough USDC, and the per-address rate limit (5 per minute). Then it calls `bidWithAuthorization` and pays the gas.
 5. The AuctionHouse recomputes the same nonce from the arguments it was given, runs the bid logic, and calls `USDC.receiveWithAuthorization`. USDC verifies the signature and moves exactly `amount` from the bidder to the AuctionHouse.
 
 **Why the relayer cannot cheat**
@@ -382,7 +381,8 @@ Things that only show up when you actually build on Arc, and how Gavel handles e
 
 ## Proof on Arc mainnet
 
-- **Deploy (v7):** AuctionHouse in block 28,065,938, tx [`0xad6537e1...0c03`](https://explorer.arc.io/tx/0xad6537e1f54b167bdd9b7ed66c35157871a152e3523929518b6ee9eff4500c03). EURC and ERC-8004 identities allowlisted in txs [`0xe575e017...52ec`](https://explorer.arc.io/tx/0xe575e0179f1764f2ec8f795a067382dbe1da55bfe25c9f1e87c74ac7655f52ec) and [`0xcafe61bc...2e21`](https://explorer.arc.io/tx/0xcafe61bca3316f80136a81b44d7a457d9a86945f665979d6e096d920d6252e21). The first mainnet auction (lot #0) ran on v6 `0x24D8...56dd` and stays there. ReputationWriter tx [`0xc64d48e7...c419`](https://explorer.arc.io/tx/0xc64d48e7e148f8b1c3089012a6e6c0fb3b7c10aad22e87ad24ef96496a67c419). Total deploy gas 4,070,482, which cost 0.082 USDC.
+- **Deploy (v8, live):** AuctionHouse `0xA51A6ac3...dEa6` in block 28,077,831, tx [`0xe57ba214...27d2`](https://explorer.arc.io/tx/0xe57ba2140d97356597d43894f18f8119288febc62ed92e0558650dd7eb7327d2). Ten vetted ERC-20s (EURC, cirBTC, LINK, XAUM, VIRTUAL, GBPA, MXNB, QCAD, TRYB, WBRL) and ERC-8004 identities are allowlisted. Earlier versions stay readable: v6 `0x24D8...56dd` (the first mainnet auction) and v7 `0x6102...3A2E`.
+- **Example settle:** lot 11, 84.67 USDC, [0xe01c69e1…6652](https://explorer.arc.io/tx/0xe01c69e1dacc7db88511e1514d72b9ad7047829e5f735c15a5f46d99c99b6652). ReputationWriter tx [`0xc64d48e7...c419`](https://explorer.arc.io/tx/0xc64d48e7e148f8b1c3089012a6e6c0fb3b7c10aad22e87ad24ef96496a67c419). Total deploy gas 4,070,482, which cost 0.082 USDC.
 - **Verified:** all four contracts match their source exactly on Sourcify, and their wiring was checked on-chain (`usdc()`, `owner()`, `lotVault()`, `gavelLot()`, `auctionHouse()`, `reputationRegistry()`).
 - **Activity:** every mainnet transaction is listed with explorer links in [PROOF.md](PROOF.md), and the live `/proof` page recomputes the totals from chain.
 - **Testnet history:** six AuctionHouse versions were deployed to Arc testnet during the build. A full end-to-end run (gas bid, gasless bid, last-second extension, settle, refund claim, delivery confirmation) passed on the final version before mainnet, and those hashes are in PROOF.md too.
@@ -479,7 +479,7 @@ Run with `forge test` in `onchain/`. All 83 pass. Tests 38-53 cover the v7 lot k
 
 ## How it was built in Arc Studio
 
-Gavel was built in one Arc Studio project ([studio.arc.io/app/d49aa346...](https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed)) over 29 turns between 17 and 28 October 2026. Studio wrote and tested the contracts, built the app and the relayer, and deployed every testnet version. [STUDIO.md](STUDIO.md) logs each turn: the prompt, what Studio produced, what it got wrong, and what was corrected. The exact prompts are in [`prompts/`](prompts).
+Gavel was built in one Arc Studio project ([studio.arc.io/app/d49aa346...](https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed)) over 35 turns between 17 and 28 October 2026. Studio wrote and tested the contracts, built the app and the relayer, and deployed every testnet version. [STUDIO.md](STUDIO.md) logs each turn: the prompt, what Studio produced, what it got wrong, and what was corrected. The exact prompts are in [`prompts/`](prompts).
 
 | Turns | Date | What was built | Notable |
 |---|---|---|---|
@@ -491,8 +491,12 @@ Gavel was built in one Arc Studio project ([studio.arc.io/app/d49aa346...](https
 | 8-20 | 23-24 Oct | Redesign, landing page, durations, accessibility, RPC resilience | Bugs found only by running the full stack against the real chain. |
 | 21 | 25 Oct | Pre-mainnet security fixes reviewed, tested (37/37) and redeployed by Studio | |
 | 22 | 25 Oct | App repointed at mainnet | |
+| 23-25 | 26-27 Oct | v7: any Arc asset (ERC-20, ERC-721, ERC-1155), off-chain escrow, refusals on both sides | My audit caught a critical escrow lockup in Studio's v7 before mainnet. |
+| 26-28 | 27-28 Oct | v8: top-up bidding, payouts to wallets, refunds with reasons, evidence, dispute desk with email alerts, image upload | Studio invented function selectors in the alert code; rewritten with viem. |
+| 29-32 | 28 Oct | Token amounts in normal units, token icons, NFT images, 9 vetted ERC-20s | A real user found "17" meant 0.000017 EURC. |
+| 33-35 | 28 Oct | Landing stats fix, reputation panel fix, wallet check on bids, live mainnet strip, brand mark | |
 
-Arc Studio deploys to testnet only, so the mainnet contracts were deployed with `arc-forge` from the builder's own wallet, from exactly the same source Studio had tested. The deploy script asks for the key interactively, so the key never touches a file. Twelve small fixes were made by hand outside Studio, mostly when the usage limit was reached. Each is listed in STUDIO.md and was uploaded back into the Studio project before the next turn, so the Studio project and this repository match.
+Arc Studio deploys to testnet only, so the mainnet contracts were deployed with `arc-forge` from the builder's own wallet, from exactly the same source Studio had tested. The deploy script asks for the key interactively, so the key never touches a file. 26 small fixes were made by hand outside Studio, mostly when the usage limit was reached or Studio was unreachable. Each is listed in STUDIO.md and was uploaded back into the Studio project before the next turn, so the Studio project and this repository match.
 
 ## What we got wrong
 

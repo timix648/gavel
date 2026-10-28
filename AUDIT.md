@@ -1,3 +1,5 @@
+> History: this file starts with the v6 review (24 Oct). The v7 review follows; v8 changes and their tests (83 in total) are in V8-DESIGN.md and STUDIO.md turns 26-28.
+
 # GAVEL contract review (pre-mainnet), 24 Oct 2026
 
 Scope: onchain/contracts/AuctionHouse.sol, LotVault.sol, GavelLot.sol, ReputationWriter.sol.

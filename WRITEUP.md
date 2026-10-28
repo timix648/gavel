@@ -1,9 +1,9 @@
 # Gavel: a live USDC auction house on Arc
 
-**Live app:** https://gavel-alpha.vercel.app · **Arc Studio project:** https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed · **Repo:** https://github.com/timix648/gavel · **Video:** _link_
+**Live app:** https://gavel-alpha.vercel.app · **Arc Studio project:** https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed · **Repo:** https://github.com/timix648/gavel
 
 **AuctionHouse on Arc mainnet:** [`0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6`](https://explorer.arc.io/address/0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6)
-**Example mainnet transaction:** _hash from the first live auction_
+**Example mainnet transaction:** lot 11 settled for 84.67 USDC, [0xe01c69e1…6652](https://explorer.arc.io/tx/0xe01c69e1dacc7db88511e1514d72b9ad7047829e5f735c15a5f46d99c99b6652)
 
 ## One line
 
@@ -21,12 +21,12 @@ Arc removes each of those constraints: sub-second deterministic finality, USDC a
 
 ## What Gavel does
 
-1. **A seller lists a lot.** It sets a title, a reserve (up to 5 USDC in v1), a minimum bid step and a duration: 10, 15 or 30 minutes for a live auction, or 1 hour to 7 days for a timed listing. Listing mints a lot NFT straight into an escrow vault and takes a bond equal to the reserve.
+1. **A seller lists a lot.** It sets a title, a reserve (up to 1,000 USDC), a minimum bid step and a duration: 10, 15 or 30 minutes for a live auction, or 1 hour to 7 days for a timed listing. Listing mints a lot NFT straight into an escrow vault and takes a bond equal to the reserve.
 2. **Bidders bid live.** Each bid is a USDC transaction that must beat the current high bid by the step. The previous high bidder's USDC becomes claimable in that same transaction. The room shows a countdown driven by block timestamps, the bid history streaming in, and the exact next valid bid on one button.
 3. **Late bids extend the clock.** A bid in the final 10 seconds pushes the deadline to now + 10 seconds, up to 30 times, so the auction always ends.
 4. **The hammer is atomic.** `settle()` moves the lot NFT from the vault to the winner and credits the seller with the winning bid in one transaction. Neither side can renege. In the app, settlement goes through Arc's Memo contract, so it carries a reconcilable receipt keyed to the lot.
 5. **Delivery protection.** The seller's bond stays locked after the sale. The winner releases it by confirming delivery, or it releases automatically after 7 days. Before that the winner can dispute. The owner arbitrates, with a permissionless fallback after 14 days so a bond can never lock forever.
-6. **Everyone withdraws their own money.** Outbid bidders, sellers and refunded bonds all accumulate in a `claimable` balance and are pulled with one `claim()`.
+6. **Money goes back automatically.** Outbid USDC becomes credit that the next bid reuses (you only add the difference) or that you withdraw with one `claim()`. Escrow payouts and refunds are pushed straight to the wallet, falling back to `claimable` if a transfer fails.
 
 ## Gasless bidding in one signature
 
@@ -63,7 +63,7 @@ All were fixed and logged.
 
 ## How I built it in Arc Studio
 
-All contracts, tests, the frontend and the relayer were built in one Arc Studio project over 29 turns between 17 and 28 October. [STUDIO.md](STUDIO.md) records every turn: the prompt, what Studio produced, what it got wrong, and what I corrected.
+All contracts, tests, the frontend and the relayer were built in one Arc Studio project over 35 turns between 17 and 28 October. [STUDIO.md](STUDIO.md) records every turn: the prompt, what Studio produced, what it got wrong, and what I corrected.
 
 The pattern that worked was **Studio builds, I verify against the chain, Studio fixes**:
 
@@ -76,7 +76,7 @@ The pattern that worked was **Studio builds, I verify against the chain, Studio 
 
 Studio deploys to testnet only, so the mainnet deploy used arc-forge from my own wallet, as Circle's docs describe. The script re-ran Studio's tests first and asked for the key interactively, so it never touched a file.
 
-I was honest in STUDIO.md about where I worked outside Studio. Twelve fixes were made by hand when the usage limit was reached or a change was tiny. Each is listed, and each was uploaded back to the Studio project before the next turn, so the Studio project and the shipped code match.
+I was honest in STUDIO.md about where I worked outside Studio. 26 fixes were made by hand when the usage limit was reached or a change was tiny. Each is listed, and each was uploaded back to the Studio project before the next turn, so the Studio project and the shipped code match.
 
 ## Real USDC on mainnet
 

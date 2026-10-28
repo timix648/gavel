@@ -28,7 +28,7 @@ Live app: https://gavel-alpha.vercel.app · Live proof (no wallet): https://gave
 | Gas | bid 115,569 (≈ $0.003) · gasless bid 144,648 (≈ $0.004) · settle 128,668 (≈ $0.003) · list 427,667 (≈ $0.011) |
 | Automated activity | none. Every lot is listed by a real seller. |
 | Built in Arc Studio | 34 turns, every one logged with what Studio got wrong ([STUDIO.md](STUDIO.md)) |
-| Keys held by the app | 1: a small gasless-relayer hot wallet with rate limits and a daily cap |
+| Keys held by the app | 1: a small gasless-relayer hot wallet with a per-address rate limit; it pays gas only and never holds bid money |
 
 ## Reproduce (read-only)
 ```bash
