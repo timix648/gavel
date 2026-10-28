@@ -64,12 +64,21 @@ export const IDENTITY_REGISTRY_ADDRESS   = '0x8004A169FB4a3325136EB29fA0ceB6D2e5
 export const REPUTATION_REGISTRY_ADDRESS = '0x8004BAa17C55a88189AE136b182e5fdA19dE9b63' as const
 
 /**
- * Planned v7 mainnet asset allowlist.
- * EURC and USYC are ERC20 tokens; the IdentityRegistry is ERC721.
- * NOTE: USYC (0x8a5D…) is permissioned — only eligible wallets can receive it.
+ * Arc mainnet ERC-20 asset allowlist (each vetted on a fork: list, bid, settle, claim).
+ * NEVER match tokens by symbol — always match by address. The symbol "USDC" is used by
+ * at least one fake token (UpSideDownCat 0x8E98A…) that must never appear in the UI.
  */
-export const EURC_ADDRESS  = '0xbEf5f6d51CB62b58e6A8f77868681825C6fe21c1' as const
-export const USYC_ADDRESS  = '0x8a5D989Bbb96929F689B0200f435f53dA42bF490' as const
+export const EURC_ADDRESS    = '0xbEf5f6d51CB62b58e6A8f77868681825C6fe21c1' as const  // 6 dec
+export const CIRBTC_ADDRESS  = '0x171A4217b86A807A64eB94757Db6849fb4bDbAA0' as const  // 8 dec, cirBTC
+export const LINK_ADDRESS    = '0x76a443768A5e3B8d1AED0105FC250877841Deb40' as const  // 18 dec
+export const XAUM_ADDRESS    = '0x178b01f61CBeA1D2a5581Fe1621Be607835EC349' as const  // 18 dec, Matrixdock Gold
+export const VIRTUAL_ADDRESS = '0x8C4252c87081c88c6Ad57d6dD97E1cAFebF842B7' as const  // 18 dec
+export const GBPA_ADDRESS    = '0xbBe6aAB0Ed76e90AeA0d1cd978EC231c8AdCDF8b' as const  // 6 dec
+export const MXNB_ADDRESS    = '0xF197FFC28c23E0309B5559e7a166f2c6164C80aA' as const  // 6 dec
+export const QCAD_ADDRESS    = '0xd70C2FA4232e054B373eFAEa98E4138511c2a309' as const  // 6 dec
+export const TRYB_ADDRESS    = '0xFb0705023603dc86325b83D9ff6b0DA7921fEc17' as const  // 18 dec
+export const WBRL_ADDRESS    = '0xD76f5Faf6888e24D9F04Bf92a0c8B921FE4390e0' as const  // 18 dec
+export const USYC_ADDRESS    = '0x8a5D989Bbb96929F689B0200f435f53dA42bF490' as const  // 18 dec, permissioned
 /** USYC transfer restriction warning shown in the UI when this asset is selected. */
 export const USYC_WARNING  = 'USYC is a permissioned token. Only KYC-eligible wallets can receive it. Confirm the buyer is eligible before listing.' as const
 

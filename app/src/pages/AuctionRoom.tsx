@@ -24,6 +24,8 @@ import { useWithGas } from '../txGas'
 import { useLogStore } from '../useLogs'
 import EvidencePanel from '../components/EvidencePanel'
 import { useTokenMeta, fmtAssetLabel } from '../hooks/useTokenMeta'
+import { useNftMeta } from '../hooks/useNftMeta'
+import TokenIcon from '../components/TokenIcon'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function splitSig(sig: Hex) {
@@ -487,6 +489,16 @@ export default function AuctionRoom() {
     (rawLotKind as number | undefined) === 3 ? (rawLotAsset as string | undefined) : undefined
   )
 
+  // NFT auto-image — must be above the early loading return (React hook order).
+  // rawLotKind 1=ERC721, 2=ERC1155. lot?.tokenId is undefined until lot loads.
+  const rawKindNum = rawLotKind as number | undefined
+  const nftMetaKind = rawKindNum === 1 ? LotKind.ERC721 : rawKindNum === 2 ? LotKind.ERC1155 : undefined
+  const { image: nftAutoImage } = useNftMeta(
+    nftMetaKind,
+    rawLotAsset as string | undefined,
+    lot?.tokenId,
+  )
+
   // ── v7: claimLotAsset ─────────────────────────────────────────────────────
   const [claimAssetTo, setClaimAssetTo] = useState('')
   const { writeContract: claimAssetTx, data: claimAssetHash } = useWriteContract()
@@ -566,6 +578,9 @@ export default function AuctionRoom() {
   const assetAlreadyClaimed = rawAssetClaimed === true
   const isOnchainKind = lotKind !== LotKind.OFFCHAIN
   const assetLabel    = lot ? fmtAssetLabel(lotKind, lot.tokenId, lotAmountRaw, rawLotAsset as string ?? '', assetDecimals, assetSymbol) : ''
+
+  // Resolved display image: seller upload > NFT auto > null
+  const displayImage = lotImage || nftAutoImage || null
   const isSold        = lot.settled && lot.highestBidder !== NULL_ADDR
   const isUnsold      = (lot.settled || lot.cancelled) && lot.highestBidder === NULL_ADDR
   // Winner can claim asset for ERC721/ERC1155/ERC20 lots; seller can reclaim unsold
@@ -694,17 +709,22 @@ export default function AuctionRoom() {
               {isLive && (
               <div>
                 <p className="text-xs text-ink-3 mb-1">{lot.highestBid > 0n ? 'Current bid' : 'Reserve'}</p>
-                <AnimatePresence mode="wait">
-                  <motion.p
-                    key={bidFlash ? 'flash' : 'stable'}
-                    initial={bidFlash ? { opacity: 0, y: 8 } : false}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.22 }}
-                    className="text-5xl md:text-6xl font-mono tabular-nums font-bold text-ink leading-none"
-                  >
-                    {fmtUsdc(lot.highestBid > 0n ? lot.highestBid : lot.reserve)}
-                  </motion.p>
-                </AnimatePresence>
+                <div className="flex items-center gap-2">
+                  {isOnchainKind && typeof rawLotAsset === 'string' && lotKind === LotKind.ERC20 && (
+                    <TokenIcon address={rawLotAsset} symbol={assetSymbol} size={28} />
+                  )}
+                  <AnimatePresence mode="wait">
+                    <motion.p
+                      key={bidFlash ? 'flash' : 'stable'}
+                      initial={bidFlash ? { opacity: 0, y: 8 } : false}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.22 }}
+                      className="text-5xl md:text-6xl font-mono tabular-nums font-bold text-ink leading-none"
+                    >
+                      {fmtUsdc(lot.highestBid > 0n ? lot.highestBid : lot.reserve)}
+                    </motion.p>
+                  </AnimatePresence>
+                </div>
                 {bidFlash && prevBid > 0n && (
                   <p className="text-xs text-ink-3 mt-1 font-mono">was {fmtUsdc(prevBid)}</p>
                 )}
@@ -1099,15 +1119,20 @@ export default function AuctionRoom() {
             )}
           </div>
 
-          {/* Lot image — real image from metadata, or composed placeholder */}
+          {/* Lot image — seller upload > NFT auto-image > token icon > placeholder */}
           <div className="aspect-[3/2] rounded-panel overflow-hidden bg-surface-2 flex items-center justify-center">
-            {lotImage ? (
+            {displayImage ? (
               <img
-                src={lotImage}
+                src={displayImage}
                 alt={title || `Lot #${id}`}
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
+            ) : isOnchainKind && lotKind === LotKind.ERC20 && typeof rawLotAsset === 'string' ? (
+              <div className="flex flex-col items-center justify-center gap-3 w-full h-full select-none">
+                <TokenIcon address={rawLotAsset} symbol={assetSymbol} size={56} />
+                {assetLabel && <p className="text-ink-2 text-sm font-semibold">{assetLabel}</p>}
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center gap-3 w-full h-full select-none">
                 <Gavel size={48} weight="thin" className="text-ink-3" />

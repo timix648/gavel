@@ -4,6 +4,7 @@ import { Lightning } from '@phosphor-icons/react'
 import { LotTuple, LotKind, LOT_KIND_LABEL } from '../abi'
 import { fmtUsdc, shortAddr, fmtDuration } from '../utils'
 import { useChainNow } from '../useBlock'
+import TokenIcon from './TokenIcon'
 
 interface Props {
   lotId: bigint
@@ -17,14 +18,25 @@ interface Props {
   previewDurationSecs?: number
   /** Formatted asset label: '17 EURC', 'NFT #3', '5 × #0' — shown for on-chain lots. */
   assetLabel?: string
+
+  // ── Image priority (highest wins) ───────────────────────────────────────────
+  /** Seller-uploaded image URL from lot metadata (highest priority). */
+  lotImage?: string
+  /** Auto-fetched NFT image from tokenURI / uri (ERC-721 / ERC-1155). */
+  nftImage?: string
+  /** ERC-20 token address for the token icon fallback. */
+  tokenIconAddress?: string
+  /** Symbol for the token icon badge. */
+  tokenIconSymbol?: string
 }
 
 function getClientTimeSec() { return Date.now() / 1000 }
 
-export default function LotCard({ lotId, lot, title, wide, hasRelayedBid, kind, previewDurationSecs, assetLabel }: Props) {
+export default function LotCard({
+  lotId, lot, title, wide, hasRelayedBid, kind, previewDurationSecs, assetLabel,
+  lotImage, nftImage, tokenIconAddress, tokenIconSymbol,
+}: Props) {
   const isPreview = previewDurationSecs !== undefined
-  // Chain time, interpolated between blocks. Before the first block arrives we fall back
-  // to the PC clock once, so the card still renders something sensible.
   const now = useChainNow() ?? getClientTimeSec()
 
   const deadline  = Number(lot.deadline)
@@ -35,6 +47,9 @@ export default function LotCard({ lotId, lot, title, wide, hasRelayedBid, kind, 
 
   const priceDisplay = fmtUsdc(lot.highestBid > 0n ? lot.highestBid : lot.reserve)
   const priceLabel   = lot.highestBid > 0n ? 'Current bid' : 'Reserve'
+
+  // Resolved display image (priority: seller upload > NFT auto > none)
+  const displayImage = lotImage || nftImage || null
 
   return (
     <motion.div
@@ -52,6 +67,18 @@ export default function LotCard({ lotId, lot, title, wide, hasRelayedBid, kind, 
           isPreview ? 'border-line cursor-default' : live ? 'border-line hover:border-ink-3 hover:bg-surface-2' : 'border-line hover:bg-surface-2'
         }`}
       >
+        {/* Thumbnail — shown when any image is available */}
+        {displayImage && (
+          <div className="mb-3 rounded-[8px] overflow-hidden bg-surface-2 aspect-[16/9]">
+            <img
+              src={displayImage}
+              alt={title ?? `Lot #${lotId}`}
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
+          </div>
+        )}
+
         {/* Title row */}
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex-1 min-w-0">
@@ -97,9 +124,14 @@ export default function LotCard({ lotId, lot, title, wide, hasRelayedBid, kind, 
         <div className="flex items-end justify-between gap-2">
           <div>
             <p className="text-[11px] text-ink-3 mb-0.5">{priceLabel}</p>
-            <p className={`text-xl font-bold font-mono tabular-nums ${live ? 'text-ink' : 'text-ink-2'}`}>
-              {priceDisplay}
-            </p>
+            <div className="flex items-center gap-1.5">
+              {tokenIconAddress && (
+                <TokenIcon address={tokenIconAddress} symbol={tokenIconSymbol} size={16} />
+              )}
+              <p className={`text-xl font-bold font-mono tabular-nums ${live ? 'text-ink' : 'text-ink-2'}`}>
+                {priceDisplay}
+              </p>
+            </div>
           </div>
 
           <div className="text-right">

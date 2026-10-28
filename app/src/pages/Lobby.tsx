@@ -21,7 +21,7 @@ const LOBBY_WINDOW = 24
 /** Minimum gap between lobby refreshes, whatever the block rate. */
 const LOBBY_REFRESH_MS = 4000
 
-interface LotEntry { lotId: bigint; lot: LotTuple; title: string; hasRelayedBid: boolean; assetLabel: string }
+interface LotEntry { lotId: bigint; lot: LotTuple; title: string; hasRelayedBid: boolean; assetLabel: string; lotImage: string; nftImage: string; kind: LotKind; asset: string }
 
 function getClientTimeSec() { return Date.now() / 1000 }
 
@@ -37,7 +37,23 @@ function decodeLotTitle(uri: string, fallback: string): string {
   return uri.trim() || fallback
 }
 
+function decodeLotImage(uri: string): string {
+  if (!uri) return ''
+  if (uri.startsWith('data:application/json')) {
+    try {
+      const json = JSON.parse(atob(uri.split(',')[1])) as { image?: string }
+      const img = json.image?.trim() ?? ''
+      // Only https or data:image/* (never SVG)
+      if (img.startsWith('https://') || /^data:image\/(png|jpeg|webp|gif);base64,/i.test(img)) return img
+    } catch {}
+  }
+  return ''
+}
+
 const uriTitleCache = new Map<string, string>()
+// Module-level caches to avoid refetching across renders
+const uriImageCache  = new Map<string, string>()  // key: gavelAddr:tokenId → image URL
+const nftImageCache  = new Map<string, string>()  // key: kind:asset:id → image URL
 
 export default function Lobby() {
   const block  = useLatestBlock()
@@ -152,8 +168,10 @@ export default function Lobby() {
           if (uriResults[j].status === 'success') {
             const uri = uriResults[j].result as string
             uriTitleCache.set(cacheKey, decodeLotTitle(uri, `Lot #${ids[i]}`))
+            uriImageCache.set(cacheKey, decodeLotImage(uri))
           } else {
             uriTitleCache.set(cacheKey, `Lot #${ids[i]}`)
+            uriImageCache.set(cacheKey, '')
           }
         }
       } catch {}
@@ -212,6 +230,27 @@ export default function Lobby() {
       } catch {}
     }
 
+    // Fetch NFT images for ERC-721/ERC-1155 lots not yet cached
+    const nftFetches: Promise<void>[] = []
+    for (let i = 0; i < ids.length; i++) {
+      const k = kindResults[i]?.status === 'success' ? Number(kindResults[i].result) : 0
+      const a = assetResults[i]?.status === 'success' ? assetResults[i].result as string : ''
+      const lot = rawLots[i]
+      if ((k === 1 || k === 2) && a && lot) {
+        const nftKey = `${k}:${a.toLowerCase()}:${lot.tokenId}`
+        if (!nftImageCache.has(nftKey)) {
+          const kind = k; const asset = a; const tokenId = lot.tokenId
+          nftFetches.push(
+            fetch(`/api/nft-meta?kind=${kind === 1 ? '721' : '1155'}&asset=${encodeURIComponent(asset)}&id=${tokenId.toString()}`)
+              .then(r => r.ok ? r.json() as Promise<{image: string|null}> : {image: null})
+              .then(d => { nftImageCache.set(nftKey, d.image ?? '') })
+              .catch(() => { nftImageCache.set(nftKey, '') })
+          )
+        }
+      }
+    }
+    if (nftFetches.length > 0) await Promise.all(nftFetches)
+
     const next = new Map<string, LotEntry>(prevLotsRef.current)
     for (let i = 0; i < rawLots.length; i++) {
       const lot = rawLots[i]
@@ -225,7 +264,13 @@ export default function Lobby() {
       const amount = amountResults[i]?.status === 'success' ? amountResults[i].result as bigint : 0n
       const meta = getTokenMetaCache(asset)
       const assetLabel = fmtAssetLabel(kind, lot.tokenId, amount, asset, meta?.decimals, meta?.symbol)
-      next.set(key, { lotId, lot, title, hasRelayedBid: relayedLotIds.has(key), assetLabel })
+      // Seller-uploaded image from GavelLot tokenURI
+      const offchainCacheKey = `${gavelAddr}:${lot.tokenId}`
+      const lotImage = uriImageCache.get(offchainCacheKey) ?? ''
+      // NFT auto-image
+      const nftKey = `${kind}:${asset.toLowerCase()}:${lot.tokenId}`
+      const nftImage = (kind === LotKind.ERC721 || kind === LotKind.ERC1155) ? (nftImageCache.get(nftKey) ?? '') : ''
+      next.set(key, { lotId, lot, title, hasRelayedBid: relayedLotIds.has(key), assetLabel, lotImage, nftImage, kind, asset })
     }
     const windowKeys = new Set(ids.map(id => id.toString()))
     for (const k of next.keys()) {
@@ -292,6 +337,11 @@ export default function Lobby() {
                   wide={idx === 0}
                   hasRelayedBid={e.hasRelayedBid}
                   assetLabel={e.assetLabel || undefined}
+                  kind={e.kind}
+                  lotImage={e.lotImage || undefined}
+                  nftImage={e.nftImage || undefined}
+                  tokenIconAddress={e.kind === LotKind.ERC20 ? (e.asset || undefined) : undefined}
+                  tokenIconSymbol={getTokenMetaCache(e.asset)?.symbol}
                 />
               ))}
             </div>

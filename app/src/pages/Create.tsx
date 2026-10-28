@@ -7,13 +7,17 @@ import { CheckCircle, Warning, Package, ImageSquare, Coins, Tag } from '@phospho
 import {
   AUCTION_HOUSE_ADDRESS, USDC_ADDRESS, CHAIN_ID,
   REPUTATION_WRITER_ADDRESS, IDENTITY_REGISTRY_ADDRESS,
-  EURC_ADDRESS,
+  EURC_ADDRESS, CIRBTC_ADDRESS, LINK_ADDRESS, XAUM_ADDRESS,
+  VIRTUAL_ADDRESS, GBPA_ADDRESS, MXNB_ADDRESS, QCAD_ADDRESS,
+  TRYB_ADDRESS, WBRL_ADDRESS,
 } from '../chain'
 import { useWithGas } from '../txGas'
 import { AUCTION_HOUSE_ABI, REPUTATION_WRITER_ABI, IDENTITY_REGISTRY_ABI, ERC721_ABI, ERC1155_ABI, LotKind } from '../abi'
 import { fmtUsdc, parseUsdc, parseOnchainError } from '../utils'
 import LotCard from '../components/LotCard'
 import { useTokenMeta, parseTokenAmount, fmtTokenAmount } from '../hooks/useTokenMeta'
+import { useNftMeta } from '../hooks/useNftMeta'
+import TokenIcon from '../components/TokenIcon'
 
 // ── Duration presets ─────────────────────────────────────────────────────────
 const DURATION_PRESETS = [
@@ -28,11 +32,21 @@ const DURATION_PRESETS = [
   { label: '7 days',   secs: 604800,  kind: 'timed' },
 ]
 
-// ── Known on-chain assets (for the dropdown helper) ──────────────────────────
-const KNOWN_ERC20_ASSETS: { label: string; address: string; warning?: string }[] = [
-  { label: 'EURC',  address: EURC_ADDRESS },
-  // USYC is not offered: it is permissioned, so the vault itself would need to be
-  // on USYC's allowlist before a listing could escrow it.
+// ── Known on-chain assets (vetted on Arc mainnet fork: list, bid, settle, claim) ─
+// NEVER match tokens by symbol — always by address.
+// USYC is intentionally excluded: it is permissioned and its vault would need to
+// be on the USYC allowlist before escrow works.
+const ALL_KNOWN_ERC20_ASSETS: { label: string; address: string; warning?: string }[] = [
+  { label: 'EURC',    address: EURC_ADDRESS },
+  { label: 'cirBTC',  address: CIRBTC_ADDRESS },
+  { label: 'LINK',    address: LINK_ADDRESS },
+  { label: 'XAUM',   address: XAUM_ADDRESS },
+  { label: 'VIRTUAL', address: VIRTUAL_ADDRESS },
+  { label: 'GBPA',   address: GBPA_ADDRESS },
+  { label: 'MXNB',   address: MXNB_ADDRESS },
+  { label: 'QCAD',   address: QCAD_ADDRESS },
+  { label: 'TRYB',   address: TRYB_ADDRESS },
+  { label: 'WBRL',   address: WBRL_ADDRESS },
 ]
 
 // ── Styling ───────────────────────────────────────────────────────────────────
@@ -108,12 +122,46 @@ export default function Create() {
   const [error, setError]               = useState('')
   const [pendingLotURI, setPendingLotURI] = useState('')
 
-  // ── Known ERC20 asset selection ──────────────────────────────────────────
+  // ── Known ERC20 asset selection — filtered by isAssetAllowed on the contract ──
+  // Each slot is an unconditional hook call (React rules). We zip results after.
+  const isAllowed0 = useReadContract({ address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'isAssetAllowed', args: [ALL_KNOWN_ERC20_ASSETS[0].address as `0x${string}`], chainId: CHAIN_ID })
+  const isAllowed1 = useReadContract({ address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'isAssetAllowed', args: [ALL_KNOWN_ERC20_ASSETS[1].address as `0x${string}`], chainId: CHAIN_ID })
+  const isAllowed2 = useReadContract({ address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'isAssetAllowed', args: [ALL_KNOWN_ERC20_ASSETS[2].address as `0x${string}`], chainId: CHAIN_ID })
+  const isAllowed3 = useReadContract({ address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'isAssetAllowed', args: [ALL_KNOWN_ERC20_ASSETS[3].address as `0x${string}`], chainId: CHAIN_ID })
+  const isAllowed4 = useReadContract({ address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'isAssetAllowed', args: [ALL_KNOWN_ERC20_ASSETS[4].address as `0x${string}`], chainId: CHAIN_ID })
+  const isAllowed5 = useReadContract({ address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'isAssetAllowed', args: [ALL_KNOWN_ERC20_ASSETS[5].address as `0x${string}`], chainId: CHAIN_ID })
+  const isAllowed6 = useReadContract({ address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'isAssetAllowed', args: [ALL_KNOWN_ERC20_ASSETS[6].address as `0x${string}`], chainId: CHAIN_ID })
+  const isAllowed7 = useReadContract({ address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'isAssetAllowed', args: [ALL_KNOWN_ERC20_ASSETS[7].address as `0x${string}`], chainId: CHAIN_ID })
+  const isAllowed8 = useReadContract({ address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'isAssetAllowed', args: [ALL_KNOWN_ERC20_ASSETS[8].address as `0x${string}`], chainId: CHAIN_ID })
+  const isAllowed9 = useReadContract({ address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'isAssetAllowed', args: [ALL_KNOWN_ERC20_ASSETS[9].address as `0x${string}`], chainId: CHAIN_ID })
+
+  // Show an asset if the contract returned true, or while the read is still loading
+  // (optimistic during load — contract rejects at list time anyway if not allowed).
+  const allowResults = [isAllowed0, isAllowed1, isAllowed2, isAllowed3, isAllowed4,
+                        isAllowed5, isAllowed6, isAllowed7, isAllowed8, isAllowed9]
+  const KNOWN_ERC20_ASSETS = ALL_KNOWN_ERC20_ASSETS.filter((_, i) => allowResults[i].data !== false)
+
   const knownAsset = KNOWN_ERC20_ASSETS.find(a => a.address.toLowerCase() === assetAddress.toLowerCase())
 
   // ERC-20 token metadata (decimals, symbol, seller balance)
   const { decimals: tokenDecimals, symbol: tokenSymbol, balance: tokenBalance } =
     useTokenMeta(kind === LotKind.ERC20 ? assetAddress : undefined, address)
+
+  // NFT metadata auto-fetch (ERC-721 / ERC-1155)
+  const nftTokenId = (kind === LotKind.ERC721 || kind === LotKind.ERC1155) && tokenId.trim() && /^\d+$/.test(tokenId.trim())
+    ? BigInt(tokenId.trim()) : undefined
+  const { name: nftName, description: nftDescription, image: nftImage, loading: nftLoading } =
+    useNftMeta(kind === LotKind.ERC721 || kind === LotKind.ERC1155 ? kind : undefined, assetAddress || undefined, nftTokenId)
+
+  // Auto-prefill title and description from NFT metadata (only if fields are empty)
+  useEffect(() => {
+    if (!nftName && !nftDescription) return
+    if (!title && nftName) setTitle(nftName)
+    if (!description && nftDescription) setDescription(nftDescription)
+    // Auto-prefill imageUrl only if not already set by the seller
+    if (!imageUrl && nftImage) setImageUrl(nftImage)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nftName, nftDescription, nftImage])
 
   // Computed raw amounts from human-unit strings
   // Guard: if decimals haven't loaded yet, keep raw amount at 0n so no approval
@@ -478,12 +526,13 @@ export default function Create() {
                         <button
                           key={a.address} type="button"
                           onClick={() => setAssetAddress(a.address)}
-                          className={`px-2.5 py-1 rounded-tag text-xs font-medium border transition-colors ${
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-tag text-xs font-medium border transition-colors ${
                             assetAddress.toLowerCase() === a.address.toLowerCase()
                               ? 'bg-accent/10 border-accent text-accent-text'
                               : 'bg-surface-2 border-line text-ink-2 hover:border-ink-3'
                           }`}
                         >
+                          <TokenIcon address={a.address} symbol={a.label} size={14} />
                           {a.label}
                         </button>
                       ))}
@@ -506,6 +555,28 @@ export default function Create() {
                     <input type="number" min="0" value={tokenId} onChange={e => setTokenId(e.target.value)}
                       placeholder="0"
                       className={INPUT_CLS} />
+                  </div>
+                )}
+
+                {/* NFT metadata preview card */}
+                {(kind === LotKind.ERC721 || kind === LotKind.ERC1155) && assetAddress && nftTokenId !== undefined && (
+                  <div className="rounded-panel border border-line bg-surface-2 p-4 space-y-3">
+                    <p className="text-xs font-semibold text-ink-2">NFT preview</p>
+                    {nftLoading ? (
+                      <p className="text-xs text-ink-3">Reading metadata from chain...</p>
+                    ) : nftImage ? (
+                      <div className="space-y-2">
+                        <img src={nftImage} alt={nftName ?? 'NFT'} className="rounded-[8px] w-full aspect-square object-cover" loading="lazy" />
+                        {nftName && <p className="text-sm font-semibold text-ink">{nftName}</p>}
+                        {nftDescription && <p className="text-xs text-ink-2 line-clamp-3">{nftDescription}</p>}
+                        <p className="text-[10px] text-ink-3">Title and description auto-filled from metadata. You can still edit them.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {nftName && <p className="text-sm font-semibold text-ink">{nftName}</p>}
+                        <p className="text-xs text-ink-3">No image found on-chain. Upload a photo instead.</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -676,9 +747,15 @@ export default function Create() {
             <p className="text-xs text-ink-3">Preview</p>
             <LotCard
               lotId={0n} lot={previewLot}
-              title={kind === LotKind.OFFCHAIN ? (title || 'Untitled') : `${KIND_OPTIONS.find(o => o.kind === kind)?.label ?? 'Asset'} lot`}
+              title={kind === LotKind.OFFCHAIN ? (title || 'Untitled') : (nftName ?? `${KIND_OPTIONS.find(o => o.kind === kind)?.label ?? 'Asset'} lot`)}
               previewDurationSecs={durationSecs}
               kind={kind}
+              lotImage={imageUrl || undefined}
+              nftImage={(kind === LotKind.ERC721 || kind === LotKind.ERC1155) ? (nftImage ?? undefined) : undefined}
+              tokenIconAddress={kind === LotKind.ERC20 && assetAddress ? assetAddress : undefined}
+              tokenIconSymbol={tokenSymbol}
+              assetLabel={kind === LotKind.ERC20 && erc20RawAmount > 0n && tokenDecimals !== undefined && tokenSymbol
+                ? fmtTokenAmount(erc20RawAmount, tokenDecimals, tokenSymbol) : undefined}
             />
             <p className="text-xs text-ink-3 mt-2">The clock starts when your lot is listed on chain.</p>
           </div>

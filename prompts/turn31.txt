@@ -1,0 +1,20 @@
+Turn 31: automatic token icons and NFT images. Frontend + one Vercel Function. Do not touch the contracts.
+
+1. Token icons.
+   - Add src/components/TokenIcon.tsx: <TokenIcon address symbol size>.
+   - Known Arc mainnet tokens use bundled logo files in public/tokens/: EURC 0xbEf5f6d51CB62b58e6A8f77868681825C6fe21c1 and USDC 0x3600000000000000000000000000000000000000. Use Circle's official EURC and USDC logos as SVG files you create in public/tokens/ (simple, faithful, no external hotlinks).
+   - Any other token: a round badge with the first 1-2 letters of its symbol, colour derived from the address.
+   - Show the icon next to token amounts everywhere they appear (Create preview, LotCard, AuctionPanel, AuctionRoom), plus in the Create token picker.
+
+2. NFT metadata (ERC-721 and ERC-1155 lots).
+   - New Vercel Function api/nft-meta.js: GET ?kind=721|1155&asset=0x..&id=N.
+     - Read tokenURI(id) (721) or uri(id) (1155, replacing {id} with the 64-hex-digit lowercase id) via viem on Arc mainnet. Use api/_chain.js for the client.
+     - Resolve ipfs:// to https://ipfs.io/ipfs/. Accept data:application/json (base64 or plain) and https only.
+     - Fetch with a 5 s timeout and a 200 KB limit, and refuse private, loopback and link-local hosts (SSRF guard).
+     - Parse JSON and return { name, description, image }, with image ipfs:// resolved too. Only https or data:image/(png|jpeg|webp|gif) images; never SVG.
+     - Cache the response (Cache-Control: s-maxage=3600). On any failure return { name:null, description:null, image:null } with 200.
+     - Validate asset as an address and id as a uint.
+   - Add a hook useNftMeta(kind, asset, id) that calls it.
+   - Create page: when collection + token ID are entered, show a preview card with the auto image and name. If none was found, say "No image found on-chain. Upload a photo instead." and keep the upload. Prefill title and description from the metadata if those fields are empty. The seller can still override the image by uploading.
+   - Display order on LotCard, AuctionPanel, Landing featured lot and AuctionRoom: the seller-uploaded image from the lot metadata, else the auto NFT image, else the token icon (ERC-20), else the current placeholder.
+3. Typecheck, lint and a vite build. Report every file changed. Do not deploy.

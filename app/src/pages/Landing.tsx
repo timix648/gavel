@@ -699,6 +699,10 @@ export default function Landing() {
   // ── Featured lot (ends soonest) ────────────────────────────────────────────────────────────
   const [houseLot, setHouseLot] = useState<{ id: bigint; lot: LotTuple } | null>(null)
   const [houseLotLabel, setHouseLotLabel] = useState('')
+  const [houseLotNftImage,  setHouseLotNftImage]  = useState<string | undefined>(undefined)
+  const [houseLotImage,     setHouseLotImage]     = useState<string | undefined>(undefined)
+  const [houseLotTokenAddr, setHouseLotTokenAddr] = useState<string | undefined>(undefined)
+  const [houseLotTokenSym,  setHouseLotTokenSym]  = useState<string | undefined>(undefined)
   const [lastHouse, setLastHouse] = useState<{ id: bigint; bid: bigint } | null>(null)
   const lastRunRef  = useRef(0)
   const inFlightRef = useRef(false)
@@ -749,14 +753,31 @@ export default function Landing() {
       // Fetch asset label for the featured lot (if on-chain kind)
       if (foundLive) {
         try {
-          const [kindRes, assetRes, amountRes] = await Promise.all([
+          const [kindRes, assetRes, amountRes, gavelLotAddr] = await Promise.all([
             client.readContract({ address: AUCTION_HOUSE_ADDRESS, abi: AH_ABI_TYPED, functionName: 'lotKind', args: [foundLive.id] }),
             client.readContract({ address: AUCTION_HOUSE_ADDRESS, abi: AH_ABI_TYPED, functionName: 'lotAsset', args: [foundLive.id] }),
             client.readContract({ address: AUCTION_HOUSE_ADDRESS, abi: AH_ABI_TYPED, functionName: 'lotAmount', args: [foundLive.id] }),
+            client.readContract({ address: AUCTION_HOUSE_ADDRESS, abi: AH_ABI_TYPED, functionName: 'gavelLot', args: [] }).catch(() => null),
           ])
           const kind = Number(kindRes) as LotKind
           const asset = assetRes as string
           const amount = amountRes as bigint
+          // Seller-uploaded image from GavelLot tokenURI (OFFCHAIN lots)
+          if (kind === LotKind.OFFCHAIN && gavelLotAddr) {
+            const TOKEN_URI_ABI_LAND = [{ name: 'tokenURI', type: 'function', inputs: [{ name: 'tokenId', type: 'uint256' }], outputs: [{ name: '', type: 'string' }], stateMutability: 'view' }] as const
+            try {
+              const uri = await client.readContract({ address: gavelLotAddr as `0x${string}`, abi: TOKEN_URI_ABI_LAND, functionName: 'tokenURI', args: [foundLive.lot.tokenId] })
+              if (uri?.startsWith('data:application/json')) {
+                const json = JSON.parse(atob(uri.split(',')[1])) as { image?: string }
+                const img = json.image?.trim() ?? ''
+                if (img.startsWith('https://') || /^data:image\/(png|jpeg|webp|gif);base64,/i.test(img)) setHouseLotImage(img)
+                else setHouseLotImage(undefined)
+              }
+            } catch { setHouseLotImage(undefined) }
+          } else {
+            setHouseLotImage(undefined)
+          }
+          if (kind === LotKind.ERC20 && asset) { setHouseLotTokenAddr(asset) } else { setHouseLotTokenAddr(undefined) }
           if (kind === LotKind.ERC20 && asset && !getTokenMetaCache(asset)) {
             const [dRes, sRes] = await Promise.all([
               client.readContract({ address: asset as `0x${string}`, abi: [{ name: 'decimals', type: 'function', inputs: [], outputs: [{ name: '', type: 'uint8' }], stateMutability: 'view' }] as const, functionName: 'decimals', args: [] }),
@@ -765,10 +786,23 @@ export default function Landing() {
             setTokenMetaCache(asset, Number(dRes), sRes)
           }
           const meta = getTokenMetaCache(asset)
+          setHouseLotTokenSym(meta?.symbol)
           setHouseLotLabel(fmtAssetLabel(kind, foundLive.lot.tokenId, amount, asset, meta?.decimals, meta?.symbol))
+          // Fetch NFT image for ERC-721/ERC-1155
+          if (kind === LotKind.ERC721 || kind === LotKind.ERC1155) {
+            const kindParam = kind === LotKind.ERC721 ? '721' : '1155'
+            fetch(`/api/nft-meta?kind=${kindParam}&asset=${encodeURIComponent(asset)}&id=${foundLive.lot.tokenId.toString()}`)
+              .then(r => r.ok ? r.json() as Promise<{image: string|null}> : {image: null})
+              .then(d => setHouseLotNftImage(d.image ?? undefined))
+              .catch(() => {})
+          } else {
+            setHouseLotNftImage(undefined)
+          }
         } catch {}
       } else {
         setHouseLotLabel('')
+        setHouseLotNftImage(undefined)
+        setHouseLotImage(undefined)
       }
     } catch {
       lastRunRef.current = Date.now() + 4000 // rate limited: wait ~8 s before the next try
@@ -872,6 +906,10 @@ export default function Landing() {
                     secs={secs}
                     extended={extended}
                     assetLabel={houseLotLabel || undefined}
+                    lotImage={houseLotImage}
+                    nftImage={houseLotNftImage}
+                    tokenIconAddress={houseLotTokenAddr}
+                    tokenIconSymbol={houseLotTokenSym}
                   />
                 ) : (
                   <BezelPlaceholder

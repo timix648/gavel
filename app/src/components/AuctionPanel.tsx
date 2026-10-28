@@ -16,6 +16,7 @@ import {
 } from '@phosphor-icons/react'
 import { type LotTuple } from '../abi'
 import { fmtUsdc, fmtDuration, shortAddr } from '../utils'
+import TokenIcon from './TokenIcon'
 
 export interface AuctionPanelProps {
   lotId: bigint
@@ -27,21 +28,41 @@ export interface AuctionPanelProps {
   className?: string
   /** Formatted asset label ('17 EURC', 'NFT #3') for on-chain lots */
   assetLabel?: string
+
+  // ── Image priority (highest wins) ───────────────────────────────────────────
+  /** Seller-uploaded image URL from lot metadata (highest priority). */
+  lotImage?: string
+  /** Auto-fetched NFT image from tokenURI/uri. */
+  nftImage?: string
+  /** ERC-20 token address for the token icon. */
+  tokenIconAddress?: string
+  /** Symbol for the token icon badge. */
+  tokenIconSymbol?: string
 }
 
 /** A compact, read-only live panel for the landing hero and /lots strip. */
 export function CompactPanel({
   lotId, lot, secs, extended, className = '', assetLabel,
+  lotImage, nftImage, tokenIconAddress, tokenIconSymbol,
 }: AuctionPanelProps) {
   const isLive    = !lot.settled && !lot.cancelled && secs > 0
   const urgent    = isLive && secs < 30
   const NULL_ADDR = '0x0000000000000000000000000000000000000000'
+
+  const displayImage = lotImage || nftImage || null
 
   return (
     <Link
       to={`/lot/${lotId}`}
       className={`block rounded-panel border border-line bg-surface hover:border-accent/30 transition-colors ${className}`}
     >
+      {/* Thumbnail */}
+      {displayImage && (
+        <div className="overflow-hidden rounded-t-panel aspect-[16/9] bg-surface-2">
+          <img src={displayImage} alt={`Lot #${lotId}`} className="w-full h-full object-cover" loading="lazy" />
+        </div>
+      )}
+
       <div className="p-5 space-y-4">
         {/* Live tag */}
         {isLive && (
@@ -88,9 +109,14 @@ export function CompactPanel({
         {/* Current bid */}
         <div>
           <p className="text-xs text-ink-3 mb-0.5">{lot.highestBid > 0n ? 'Current bid' : 'Reserve'}</p>
-          <p className="font-mono tabular-nums text-3xl font-bold text-ink leading-none">
-            {fmtUsdc(lot.highestBid > 0n ? lot.highestBid : lot.reserve)}
-          </p>
+          <div className="flex items-center gap-1.5">
+            {tokenIconAddress && (
+              <TokenIcon address={tokenIconAddress} symbol={tokenIconSymbol} size={20} />
+            )}
+            <p className="font-mono tabular-nums text-3xl font-bold text-ink leading-none">
+              {fmtUsdc(lot.highestBid > 0n ? lot.highestBid : lot.reserve)}
+            </p>
+          </div>
         </div>
 
         {/* Leader */}
@@ -119,7 +145,7 @@ export function CompactPanel({
 
 /** Hero bezel wrapper for the landing page — adds the nested bezel frame. */
 export function BezelPanel({
-  lotId, lot, secs, extended, assetLabel,
+  lotId, lot, secs, extended, assetLabel, lotImage, nftImage, tokenIconAddress, tokenIconSymbol,
 }: AuctionPanelProps) {
   const isLive = !lot.settled && !lot.cancelled && secs > 0
   return (
@@ -127,7 +153,12 @@ export function BezelPanel({
       {/* Inset top highlight */}
       <div className="relative rounded-[16px] bg-surface overflow-hidden">
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-ink/10 to-transparent pointer-events-none" />
-        <CompactPanel lotId={lotId} lot={lot} secs={secs} extended={extended} assetLabel={assetLabel} />
+        <CompactPanel
+          lotId={lotId} lot={lot} secs={secs} extended={extended}
+          assetLabel={assetLabel}
+          lotImage={lotImage} nftImage={nftImage}
+          tokenIconAddress={tokenIconAddress} tokenIconSymbol={tokenIconSymbol}
+        />
       </div>
     </div>
   )

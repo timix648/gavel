@@ -38,8 +38,8 @@
       "pulledAt": "2026-10-23T09:54:14.062Z"
     },
     "src/chain.ts": {
-      "hash": "d147572a389d54438afa198347f841a4a8c0fb583149b3dc5c4ffac197df9f1d",
-      "pulledAt": "2026-10-25T11:59:52.714Z"
+      "hash": "70c19c93ba3c0cadb81756ccb1525e26a0a8e4f83f7a84964b321802bf278993",
+      "pulledAt": "2026-10-28T13:43:43.008Z"
     },
     "src/config.ts": {
       "hash": "d3bcc8e1474dd7f0912503dc8b4ac160a875ca96694064520bff42199c636abe",
@@ -102,20 +102,20 @@
       "pulledAt": "2026-10-24T11:11:17.944Z"
     },
     "src/components/LotCard.tsx": {
-      "hash": "7779521b90a4c3942bbb1cadc1f1a177db75bae0dd7b7c1c100e2ba6575f5022",
-      "pulledAt": "2026-10-28T13:18:21.003Z"
+      "hash": "54314885dc24410906d33795b58772c3b32a015b54f02a34f200dad748eb9bd1",
+      "pulledAt": "2026-10-28T13:39:26.712Z"
     },
     "src/pages/AuctionRoom.tsx": {
-      "hash": "bf15c19c2a3c92033a66c32cfe4f7fd96b3c5a957ee8ea9a50cac2f1529c7538",
-      "pulledAt": "2026-10-28T13:18:21.006Z"
+      "hash": "c16b0a36e4519e80ca3a64acd4be3900b7a1fec1c13ce1e3eac88a93b5e4a1b2",
+      "pulledAt": "2026-10-28T13:39:26.719Z"
     },
     "src/pages/Create.tsx": {
-      "hash": "14c468fb5cefafe6c575c303c14f99df5e51f4627b8794938d59ba96cefbe72c",
-      "pulledAt": "2026-10-28T13:20:16.347Z"
+      "hash": "f27251163cd57a8728694e625216ae08874058a6eee9f12c55be5c6f30f9ff78",
+      "pulledAt": "2026-10-28T13:43:43.011Z"
     },
     "src/pages/Lobby.tsx": {
-      "hash": "66718294aae3d81f9f46cac1e1adabf7af4c4a60f19b4e08d522f92e7c86170f",
-      "pulledAt": "2026-10-28T13:18:21.012Z"
+      "hash": "f4e941cc53c37a31061f294197d3a56faec07b34b1d36ef202f44f0714fd626b",
+      "pulledAt": "2026-10-28T13:39:26.724Z"
     },
     "src/pages/Me.tsx": {
       "hash": "522bccce903b056b6a4b18b8faa634548b4375a239490fe747d0a3ccc0edcba2",
@@ -182,12 +182,12 @@
       "pulledAt": "2026-10-24T10:15:30.088Z"
     },
     "src/components/AuctionPanel.tsx": {
-      "hash": "222d8f411b671ae0b8630d6082eea963fa22eb82a7e4054b2458f1052025dd0b",
-      "pulledAt": "2026-10-28T13:18:21.001Z"
+      "hash": "6139c7e7084eefa39fa6a94e76a2a2090ad93b7bb50cd5d069798effdc0f0803",
+      "pulledAt": "2026-10-28T13:39:26.710Z"
     },
     "src/pages/Landing.tsx": {
-      "hash": "2d07b7a3ee91bb943ad070192b66d4c7c5bb2bed8aae04fd720198eac40f44f4",
-      "pulledAt": "2026-10-28T13:18:21.011Z"
+      "hash": "a58feb1ae1d4576c96d8b60671e6313b7c6cbe0c4edac8571784135a8a3c868c",
+      "pulledAt": "2026-10-28T13:39:26.722Z"
     },
     ".oxlintrc.json": {
       "hash": "20310a6cebeb5380dc1207926cd97e0b455cba97beb118c8cce74141bc5049c2",
@@ -208,6 +208,26 @@
     "src/hooks/useTokenMeta.ts": {
       "hash": "50f9eb169cb14388926a3e065ed5256d079417a214baf7ceab70c407437a961f",
       "pulledAt": "2026-10-28T13:18:21.004Z"
+    },
+    "api/nft-meta.js": {
+      "hash": "1c93dd2d7a6d121760b20e65917f32ec79ea7ef0fb9f546ac2c572b330d48561",
+      "pulledAt": "2026-10-28T13:43:43.007Z"
+    },
+    "public/tokens/eurc.svg": {
+      "hash": "88cd8add2e1ecf4a49f49c489739f0e854fc8c2f93080160f93081bca6e26fb2",
+      "pulledAt": "2026-10-28T13:43:43.010Z"
+    },
+    "public/tokens/usdc.svg": {
+      "hash": "e62e8dc218b0914ed33f6eff69aee37aff8c6b3d766afefa84c646d970b639da",
+      "pulledAt": "2026-10-28T13:39:26.707Z"
+    },
+    "src/components/TokenIcon.tsx": {
+      "hash": "3c83ee76563da825bd6e0c6559a574aff9a6a9255eb5d4d06b1b2b76f22d1b1b",
+      "pulledAt": "2026-10-28T13:39:26.714Z"
+    },
+    "src/hooks/useNftMeta.ts": {
+      "hash": "bc6546ef9f4eb7330f94066f09aff70a1f8bcc080b3f93b10c63da64fe0d4135",
+      "pulledAt": "2026-10-28T13:39:26.717Z"
     }
   }
 }

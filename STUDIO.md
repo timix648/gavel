@@ -639,3 +639,12 @@ The relayer `/stats` scanned 50,000 blocks in one request. The RPC caps requests
 **Turn 30.** On review I found that Create fell back to 18 decimals before `decimals()` loaded, which would have asked for a trillion-times-too-large approval on EURC. Studio removed the fallback and blocked submission until the token is read.
 
 Usage: 70% → 74%.
+
+## Turns 31-32 (28 Oct 2026): token icons, automatic NFT images, 9 more tokens
+**Turn 31.** Added `TokenIcon` (bundled USDC and EURC logos, letter badges for others) and `api/nft-meta.js`, which reads `tokenURI`/`uri`, resolves IPFS and returns `{name, description, image}`. Create previews NFTs and prefills them; lot images fall back from the seller upload to the NFT image to the token icon.
+
+**Turn 32.** On review I found the SSRF guard only regex-checked hostnames, which redirects, rebinding domains and odd IP forms bypass. Studio rewrote it with bare-IP refusal, a DNS check that rejects private, loopback, link-local and CGNAT ranges, and manual redirects capped at 2 and re-checked. Studio also added the 9 extra tokens to the picker, shown only if the contract currently allows them (matched by address, never by symbol: there is a fake "USDC" on Arc), and corrected the EURC logo.
+
+**Vetting.** I vetted the 9 tokens myself with `vet.sh`: a full list, bid, settle and claim auction for each on a fork of Arc mainnet, with exact amounts in and out. All passed: EURC, cirBTC, LINK, XAUM, VIRTUAL, GBPA, MXNB, QCAD, TRYB, WBRL. The owner allowlists them with `allowlist-tokens.sh`.
+
+Usage: 74% to 78%.

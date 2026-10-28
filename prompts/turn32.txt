@@ -1,0 +1,21 @@
+Turn 32: harden api/nft-meta.js and add the vetted tokens to the Create picker. Do not touch the contracts.
+
+1. api/nft-meta.js SSRF hardening. The current guard only regex-checks the hostname string. Fix:
+   - fetch with redirect: 'manual'. On a 3xx, re-validate the Location URL with the same checks and follow at most 2 redirects. Anything else is refused.
+   - Before every fetch, resolve the hostname with node:dns/promises lookup(host, { all: true }) and refuse if ANY address is private, loopback, link-local, unspecified or CGNAT: 0.0.0.0/8, 10/8, 100.64/10, 127/8, 169.254/16, 172.16/12, 192.168/16, ::, ::1, fc00::/7, fe80::/10, and IPv4-mapped ::ffff: forms of these.
+   - Refuse hosts that are bare IPs in any form (dotted, decimal, hex, IPv6 literals). Only real DNS names are allowed.
+   - Apply the same checks to ipfs.io (a resolved ipfs:// URL), and keep the 5 s timeout, 200 KB cap, no-SVG image rule and the 200 + nulls failure behaviour.
+2. Vetted ERC-20 tokens. Each of these was tested on a fork of Arc mainnet: list, bid, settle and claim, with the exact amount in and out. Add them to the Create page token picker (the KNOWN list, with TokenIcon) and as named constants in src/chain.ts:
+   cirBTC 0x171A4217b86A807A64eB94757Db6849fb4bDbAA0 (8 dec)
+   LINK 0x76a443768A5e3B8d1AED0105FC250877841Deb40 (18)
+   XAUM 0x178b01f61CBeA1D2a5581Fe1621Be607835EC349 (18, Matrixdock Gold)
+   VIRTUAL 0x8C4252c87081c88c6Ad57d6dD97E1cAFebF842B7 (18)
+   GBPA 0xbBe6aAB0Ed76e90AeA0d1cd978EC231c8AdCDF8b (6)
+   MXNB 0xF197FFC28c23E0309B5559e7a166f2c6164C80aA (6)
+   QCAD 0xd70C2FA4232e054B373eFAEa98E4138511c2a309 (6)
+   TRYB 0xFb0705023603dc86325b83D9ff6b0DA7921fEc17 (18)
+   WBRL 0xD76f5Faf6888e24D9F04Bf92a0c8B921FE4390e0 (18)
+   EURC stays first. Note that there is a FAKE token with symbol "USDC" (UpSideDownCat, 0x8E98A62a995A50eca9979bfa016f91bf36A8F9D9). Never show tokens by symbol alone; always match by address.
+   The picker must only offer tokens the AuctionHouse currently allows: call isAssetAllowed(address) for each and hide any that return false, so the UI never offers a token the contract would reject.
+3. public/tokens/eurc.svg: make it faithful to Circle's EURC mark (a blue circle with a white euro sign), not an EU flag.
+4. Typecheck, lint and a vite build. Report the diff. Do not deploy.
