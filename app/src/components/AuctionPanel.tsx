@@ -164,10 +164,13 @@ export function BezelPanel({
   )
 }
 
-/** Lot placeholder panel shown in bezel when no lot is live. */
+/** Lot placeholder panel shown in bezel when no lot is live (scan has succeeded). */
 export function BezelPlaceholder({
-  lastLotId, lastBid,
-}: { lastLotId?: bigint; lastBid?: bigint }) {
+  lastLotId, lastBid, nextLotId,
+}: { lastLotId?: bigint; lastBid?: bigint; nextLotId?: number }) {
+  // "List the first lot" only when the contract is genuinely empty.
+  const isEmpty = nextLotId === 0
+
   return (
     <div className="rounded-[22px] p-1.5 ring-1 ring-line bg-surface/60">
       <div className="rounded-[16px] bg-surface p-5 space-y-4 min-h-[200px] flex flex-col justify-center">
@@ -175,6 +178,8 @@ export function BezelPlaceholder({
           <span className="w-1.5 h-1.5 rounded-full bg-ink-3 animate-pulse" />
           <span className="text-xs text-ink-3">No lot is live right now</span>
         </div>
+
+        {/* Last result row — always show when available */}
         {lastBid !== undefined && lastBid > 0n && lastLotId !== undefined ? (
           <Link to={`/lot/${lastLotId}`} className="group space-y-1">
             <p className="text-[10px] uppercase tracking-wider text-ink-3">Last result</p>
@@ -185,11 +190,17 @@ export function BezelPlaceholder({
               View lot <ArrowSquareOut size={10} />
             </p>
           </Link>
-        ) : (
+        ) : isEmpty ? (
+          /* Only show "List the first lot" when nextLotId is confirmed 0 */
           <div className="space-y-2">
             <Gavel size={32} weight="thin" className="text-ink-3" />
             <Link to="/create" className="text-sm text-ink-2 hover:text-accent-text transition-colors">List the first lot</Link>
           </div>
+        ) : (
+          /* nextLotId > 0 but no settled lot in recent 24 — offer Browse */
+          <Link to="/lots" className="text-sm text-ink-2 hover:text-accent-text transition-colors flex items-center gap-1">
+            Browse lots <ArrowSquareOut size={12} />
+          </Link>
         )}
       </div>
     </div>

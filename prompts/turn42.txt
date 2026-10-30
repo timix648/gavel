@@ -1,0 +1,11 @@
+Turn 42. Frontend only: the landing hero lot panel in src/pages/Landing.tsx (the scan that sets houseLot / lastHouse) and BezelPlaceholder in src/components/AuctionPanel.tsx. Do not touch the race animation, stats, log store or Proof.
+
+Bug: with several visitors on the same network, the public RPC rate-limits (429 / -32005). When the hero scan (nextLotId + multicall of the newest 24 lots) fails or has not finished yet, houseLot is null and lastHouse is undefined, so the panel shows "No lot is live right now" and "List the first lot", even though lots are live and 13 have sold. Owners see it flip between the live lot and that message on refresh.
+
+Fix:
+1. Track scan status: 'loading' until the first scan succeeds, then 'ok'. A failed scan never changes the displayed result; it only schedules a retry.
+2. While no scan has succeeded yet, show a neutral skeleton in the bezel ("Checking for live lots..." with a soft shimmer, same size as the panel) instead of BezelPlaceholder. Never show "No lot is live" or "List the first lot" before a successful scan.
+3. On failure, retry with backoff (1 s, 2 s, 4 s, 8 s, capped at 15 s) until one succeeds, then return to the normal 4 s cadence. Also treat a multicall where every result failed as a failed scan.
+4. Keep the last successful result visible during later failures (already intended; make sure the error path does not clear houseLot).
+5. BezelPlaceholder: show "List the first lot" only when nextLotId is 0. Otherwise show "No lot is live right now" plus "Last result" (when known) and a "Browse lots" link.
+Typecheck, lint and build. Report the diff.

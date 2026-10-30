@@ -911,21 +911,48 @@ export default function Landing() {
   const [houseLotTokenAddr, setHouseLotTokenAddr] = useState<string | undefined>(undefined)
   const [houseLotTokenSym,  setHouseLotTokenSym]  = useState<string | undefined>(undefined)
   const [lastHouse, setLastHouse] = useState<{ id: bigint; bid: bigint } | null>(null)
-  const lastRunRef  = useRef(0)
-  const inFlightRef = useRef(false)
+  // 'loading' until the first scan succeeds; never flips back on subsequent failures
+  const [scanStatus, setScanStatus] = useState<'loading' | 'ok'>('loading')
+  // nextLotId from the most recent successful scan (for BezelPlaceholder copy)
+  const [nextLotId, setNextLotId]   = useState<number | undefined>(undefined)
+  const lastRunRef    = useRef(0)
+  const inFlightRef   = useRef(false)
+  const retryDelayRef = useRef(1000)   // exponential backoff: 1s→2s→4s→8s→15s cap
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const nowSec = Number(block?.blockTimestamp ?? 0n) || (Date.now() / 1000)
 
   const findHouseLot = useCallback(async () => {
-    // At most one scan every 4 s, one at a time; a failed scan keeps the last result.
-    if (!client || inFlightRef.current || Date.now() - lastRunRef.current < 4000) return
+    // At most one in-flight scan at a time; once ok, at most every 4 s.
+    if (!client || inFlightRef.current) return
+    if (scanStatus === 'ok' && Date.now() - lastRunRef.current < 4000) return
     inFlightRef.current = true
     lastRunRef.current = Date.now()
+
+    // Clear any pending retry timer — this run is the retry.
+    if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null }
+
+    const scheduleRetry = () => {
+      const delay = retryDelayRef.current
+      retryDelayRef.current = Math.min(delay * 2, 15000)
+      retryTimerRef.current = setTimeout(() => {
+        lastRunRef.current = 0  // allow immediate re-run
+        void findHouseLot()
+      }, delay)
+    }
+
     try {
       const count = Number(await client.readContract({
         address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, functionName: 'nextLotId', args: [],
       }))
-      if (count === 0) return
+      setNextLotId(count)
+      if (count === 0) {
+        // Zero lots — valid successful scan
+        setHouseLot(null)
+        setScanStatus('ok')
+        retryDelayRef.current = 1000
+        return
+      }
       // Scan newest 24 lots
       const start = Math.max(0, count - 24)
       const ids = Array.from({ length: count - start }, (_, i) => BigInt(start + i))
@@ -938,6 +965,10 @@ export default function Landing() {
         })),
         allowFailure: true,
       })
+      // Treat all-failed multicall as a network error (e.g. 429 returned as failures)
+      const anySuccess = results.some(r => r.status === 'success')
+      if (!anySuccess) { scheduleRetry(); return }
+
       let foundLive: { id: bigint; lot: LotTuple } | null = null
       let foundLast: { id: bigint; bid: bigint } | null = null
       for (let i = results.length - 1; i >= 0; i--) {
@@ -950,13 +981,17 @@ export default function Landing() {
           extensions: raw[8], settledAt: raw[9], settled: raw[10], cancelled: raw[11],
           bondReleased: raw[12], disputed: raw[13],
         }
-        // Feature the live lot that ends soonest, whoever listed it.
         const isLive = !lot.settled && !lot.cancelled && Number(lot.deadline) > nowSec
         if (isLive && (!foundLive || lot.deadline < foundLive.lot.deadline)) foundLive = { id: ids[i], lot }
         if (!foundLast && lot.settled && lot.highestBid > 0n) foundLast = { id: ids[i], bid: lot.highestBid }
       }
+
+      // Scan succeeded — update displayed result and mark ok
       setHouseLot(foundLive)
       if (foundLast) setLastHouse(foundLast)
+      setScanStatus('ok')
+      retryDelayRef.current = 1000
+
       // Fetch asset label for the featured lot (if on-chain kind)
       if (foundLive) {
         try {
@@ -969,7 +1004,6 @@ export default function Landing() {
           const kind = Number(kindRes) as LotKind
           const asset = assetRes as string
           const amount = amountRes as bigint
-          // Seller-uploaded image from GavelLot tokenURI (OFFCHAIN lots)
           if (kind === LotKind.OFFCHAIN && gavelLotAddr) {
             const TOKEN_URI_ABI_LAND = [{ name: 'tokenURI', type: 'function', inputs: [{ name: 'tokenId', type: 'uint256' }], outputs: [{ name: '', type: 'string' }], stateMutability: 'view' }] as const
             try {
@@ -995,7 +1029,6 @@ export default function Landing() {
           const meta = getTokenMetaCache(asset)
           setHouseLotTokenSym(meta?.symbol)
           setHouseLotLabel(fmtAssetLabel(kind, foundLive.lot.tokenId, amount, asset, meta?.decimals, meta?.symbol))
-          // Fetch NFT image for ERC-721/ERC-1155
           if (kind === LotKind.ERC721 || kind === LotKind.ERC1155) {
             const kindParam = kind === LotKind.ERC721 ? '721' : '1155'
             fetch(`/api/nft-meta?kind=${kindParam}&asset=${encodeURIComponent(asset)}&id=${foundLive.lot.tokenId.toString()}`)
@@ -1012,15 +1045,21 @@ export default function Landing() {
         setHouseLotImage(undefined)
       }
     } catch {
-      lastRunRef.current = Date.now() + 4000 // rate limited: wait ~8 s before the next try
+      // Network failure or 429: schedule retry with backoff; do NOT touch houseLot
+      scheduleRetry()
     } finally {
       inFlightRef.current = false
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client, nowSec])
+  }, [client, nowSec, scanStatus])
 
   // eslint-disable-next-line react/set-state-in-effect
   useEffect(() => { void findHouseLot() }, [findHouseLot, block?.blockNumber])
+
+  // Clean up retry timer on unmount
+  useEffect(() => () => {
+    if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
+  }, [])
 
   const { secs, extended } = useCountdown(houseLot ? Number(houseLot.lot.deadline) : 0)
 
@@ -1107,7 +1146,17 @@ export default function Landing() {
             {/* Right — live auction panel */}
             <div className="md:col-span-6 order-1 md:order-2">
               <FadeUp delay={0.08}>
-                {houseLot ? (
+                {scanStatus === 'loading' ? (
+                  /* Skeleton: shown until the first scan succeeds — never flash "No lot" */
+                  <div className="rounded-[22px] p-1.5 ring-1 ring-line bg-surface/60">
+                    <div className="rounded-[16px] bg-surface p-5 min-h-[200px] flex flex-col justify-center gap-3">
+                      <div className="h-3 w-32 rounded bg-line animate-pulse" />
+                      <div className="h-8 w-24 rounded bg-line animate-pulse" />
+                      <div className="h-3 w-48 rounded bg-line animate-pulse" />
+                      <p className="text-xs text-ink-3 mt-1">Checking for live lots…</p>
+                    </div>
+                  </div>
+                ) : houseLot ? (
                   <BezelPanel
                     lotId={houseLot.id}
                     lot={houseLot.lot}
@@ -1123,6 +1172,7 @@ export default function Landing() {
                   <BezelPlaceholder
                     lastLotId={lastHouse?.id}
                     lastBid={lastHouse?.bid}
+                    nextLotId={nextLotId}
                   />
                 )}
               </FadeUp>
