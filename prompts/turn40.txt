@@ -1,0 +1,13 @@
+Turn 40. BlockComparison in src/pages/Landing.tsx only (the uploaded file is current, including my manual fix 27 that changed rgba(var(--x), a) to rgb(var(--x) / a) everywhere). Keep the design. Fix these four bugs exactly; change nothing else.
+
+1. Starts at the end / freezes. The IntersectionObserver fires once on mount with isIntersecting=false, before any play. That branch sets pausedAtRef = performance.now() - startRef.current with startRef still 0, so pausedAt is huge; when the section scrolls in, startFrom(huge) makes p=1 at once, shows the final frame, holds 2.5 s, then loops. The same happens after the story has ended (pausedAt >= WALL_MS).
+   Fix: only record a pause point while actually playing (rafRef.current != null). Store it as clamped elapsed, and when resuming, if pausedAt <= 0 or pausedAt >= WALL_MS, start from 0. Apply the same rule in the visibilitychange handler. If hidden or out of view during the end hold, the next resume starts from 0.
+
+2. Arc dot remounts when it lands. The motion.div has key={arcArrived ? 'arc-landed' : 'arc-riding'}, so React destroys and recreates it at landing; the new node starts at display:none and left 0 for a frame. Remove the key. Use a plain div with the ref, and do the landing pop imperatively once in writeFrame: when arcArrived first becomes true, call el.animate([{transform:'scale(1)'},{transform:'scale(1.35)'},{transform:'scale(1)'}], {duration: 260, easing: 'ease-out'}). Reset the fired flag on loop and restart.
+
+3. Re-render every frame. pushDiscreteState calls setFlags/setSlowSec/setArcSec with functional updaters every rAF tick, which defeats React's bail-out and re-renders the whole panel each frame. Keep the last pushed flags, slowSec and arcSec in refs, and call setState only when the value actually differs from the ref.
+
+4. After the hold, writeFrame(0) and the restart must also reset arcPopFired and both flash refs, and clear pausedAtRef to 0.
+
+Then confirm: on first scroll into view the race starts at 0:20; the green dot never blinks at landing; React renders only on discrete changes (add a temporary render counter while testing, remove it before finishing).
+Typecheck, lint and build. Report the diff.

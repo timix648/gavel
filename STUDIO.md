@@ -673,3 +673,6 @@ Prompts: [turn38](prompts/turn38.txt), [turn39](prompts/turn39.txt). The owner s
 
 ### Manual fix 27 (30 Oct)
 The same invalid `rgba(var(--x), a)` pattern remained in 7 places (including the 12-second close line, which was also invisible). Replaced mechanically with `rgb(var(--x) / a)`. Verified in the browser; synced to Studio with the next turn.
+
+## Turn 40 (30 Oct): full review of the race animation
+Prompt: [prompts/turn40.txt](prompts/turn40.txt). Studio also received manual fix 27, so it is synced. I reviewed the whole component and sent the four real causes in one turn: (1) the IntersectionObserver's first "not visible" callback recorded a bogus pause point, so the race jumped to its final frame and held when first scrolled into view; (2) the Arc dot was remounted via a changing key at landing, blinking for a frame; (3) functional setState calls every frame defeated React's bail-out, re-rendering the panel 60 times a second; (4) pause state was not reset after a loop. Verified in the browser: starts at 0:20 on first scroll-in, dot nodes identical across the loop, about 41 text updates in 10 s instead of a render per frame, and resume mid-race continues from the same point. No hand edits.

@@ -226,6 +226,11 @@ function BlockComparison() {
   // Arc dot pop spring: track last-fired p so we don't re-trigger
   const arcPopFired    = useRef(false)
 
+  // Last-pushed discrete state — skip setState when value hasn't changed (Fix 3)
+  const lastFlagsRef   = useRef(-1)
+  const lastSlowSecRef = useRef(-1)
+  const lastArcSecRef  = useRef(-1)
+
   // ── DOM refs for imperative updates ──────────────────────────────────────
   const slowDotRef      = useRef<HTMLDivElement>(null)
   const arcDotRef       = useRef<HTMLDivElement>(null)
@@ -292,6 +297,14 @@ function BlockComparison() {
           ? 'rgb(var(--good))' : 'rgb(var(--accent))'
         arcDotRef.current.style.borderColor = arcArrived
           ? 'rgb(var(--good) / 0.4)' : 'rgb(var(--accent) / 0.5)'
+        // One-shot pop spring via Web Animations API — fires once per loop epoch
+        if (arcArrived && !arcPopFired.current) {
+          arcPopFired.current = true
+          arcDotRef.current.animate(
+            [{ transform: 'scale(1)' }, { transform: 'scale(1.35)' }, { transform: 'scale(1)' }],
+            { duration: 260, easing: 'ease-out' }
+          )
+        }
       }
       // "in block" tag
       if (arcInBlockRef.current) {
@@ -345,14 +358,25 @@ function BlockComparison() {
   }, [])
 
   // ── Push React state on discrete threshold crossings ─────────────────────
+  // Ref-gated: setState only when value actually changes, so React can bail out
+  // and we never re-render on every rAF tick.
   const pushDiscreteState = useCallback((p: number, slowFlash: boolean, arcFlash: boolean, playing: boolean) => {
     const t = storyT(p)
     const newFlags = flagsFromP(p, slowFlash, arcFlash, playing)
-    setFlags(prev => prev !== newFlags ? newFlags : prev)
+    if (newFlags !== lastFlagsRef.current) {
+      lastFlagsRef.current = newFlags
+      setFlags(newFlags)
+    }
     const newSlowSec = Math.ceil(Math.max(0, -t))
-    setSlowSec(prev => prev !== newSlowSec ? newSlowSec : prev)
+    if (newSlowSec !== lastSlowSecRef.current) {
+      lastSlowSecRef.current = newSlowSec
+      setSlowSec(newSlowSec)
+    }
     const newArcSec = Math.ceil(t < -3.5 ? Math.max(0, -t) : Math.max(0, 6.5 - t))
-    setArcSec(prev => prev !== newArcSec ? newArcSec : prev)
+    if (newArcSec !== lastArcSecRef.current) {
+      lastArcSecRef.current = newArcSec
+      setArcSec(newArcSec)
+    }
   }, [])
 
   // ── Main animation loop ───────────────────────────────────────────────────
@@ -403,9 +427,13 @@ function BlockComparison() {
         pushDiscreteState(1, slowFlashRef.current, arcFlashRef.current, false)
         holdTimer.current = setTimeout(() => {
           if (!mountedRef.current || !inViewRef.current) return
-          pRef.current = 0
+          pRef.current         = 0
+          pausedAtRef.current  = 0
           arcFlashRef.current  = false
           slowFlashRef.current = false
+          arcPopFired.current  = false
+          arcFlashFired.current  = false
+          slowFlashFired.current = false
           writeFrame(0, false)
           pushDiscreteState(0, false, false, false)
           loopTimer.current = setTimeout(() => {
@@ -427,9 +455,18 @@ function BlockComparison() {
       const vis = entries[0].isIntersecting
       inViewRef.current = vis
       if (vis) {
-        startFrom(pausedAtRef.current)
+        // Only resume mid-story; stale or unstarted pausedAt restarts from 0
+        const resume = pausedAtRef.current > 0 && pausedAtRef.current < WALL_MS
+          ? pausedAtRef.current : 0
+        startFrom(resume)
       } else {
-        pausedAtRef.current = performance.now() - startRef.current
+        // Only record pause point while the rAF loop is actually running
+        if (rafRef.current != null) {
+          const elapsed = performance.now() - startRef.current
+          pausedAtRef.current = Math.min(elapsed, WALL_MS - 1)
+        } else {
+          pausedAtRef.current = 0
+        }
         clearAllTimers()
         pushDiscreteState(pRef.current, slowFlashRef.current, arcFlashRef.current, false)
       }
@@ -444,11 +481,19 @@ function BlockComparison() {
     if (prefersReduced) return
     const onVisChange = () => {
       if (document.hidden) {
-        pausedAtRef.current = performance.now() - startRef.current
+        // Only record pause point while actually playing
+        if (rafRef.current != null) {
+          const elapsed = performance.now() - startRef.current
+          pausedAtRef.current = Math.min(elapsed, WALL_MS - 1)
+        } else {
+          pausedAtRef.current = 0
+        }
         clearAllTimers()
         pushDiscreteState(pRef.current, slowFlashRef.current, arcFlashRef.current, false)
       } else if (inViewRef.current) {
-        startFrom(pausedAtRef.current)
+        const resume = pausedAtRef.current > 0 && pausedAtRef.current < WALL_MS
+          ? pausedAtRef.current : 0
+        startFrom(resume)
       }
     }
     document.addEventListener('visibilitychange', onVisChange)
@@ -482,7 +527,6 @@ function BlockComparison() {
   const slowMissed  = !!(flags & FLAG_SLOW_MISSED)
   const arcAccepted = !!(flags & FLAG_ARC_ACCEPTED)
   const arcSold     = !!(flags & FLAG_ARC_SOLD)
-  const arcArrived  = !!(flags & FLAG_ARC_ARRIVED)
 
   const BEAT_CAPTIONS = ['', 'Ten seconds left.', 'A bid is sent at 0:04.']
   const closePct12    = toPct(0)
@@ -643,17 +687,10 @@ function BlockComparison() {
               style={{ left: `${toPct(0)}%` }}
             />
 
-            {/* Arc dot — rides playhead, then snaps to block with a pop spring */}
-            {/* The motion.div key changes when arcArrived flips, triggering the spring */}
-            <motion.div
-              key={arcArrived ? 'arc-landed' : 'arc-riding'}
+            {/* Arc dot — rides playhead, then snaps to block; pop via Web Animations API */}
+            <div
               ref={arcDotRef}
               className="absolute w-3 h-3 rounded-full border-2 z-30"
-              initial={arcArrived ? { scale: 1.35 } : { scale: 1 }}
-              animate={{ scale: 1 }}
-              transition={arcArrived
-                ? { type: 'spring', stiffness: 500, damping: 20 }
-                : { duration: 0 }}
               style={{ display: 'none', top: '50%', marginTop: '-6px', marginLeft: '-6px',
                 backgroundColor: 'rgb(var(--accent))', borderColor: 'rgb(var(--accent) / 0.5)',
                 transition: 'background-color 200ms, border-color 200ms' }}
