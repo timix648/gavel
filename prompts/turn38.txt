@@ -1,0 +1,16 @@
+Turn 38. Only the BlockComparison animation in src/pages/Landing.tsx. Do not touch stats, the log store, LiveStatsStrip, Proof, or anything that reads the chain. Keep turn 36/37 mechanics (one rAF clock, transform-driven motion, no layout shift, reduced motion = final frame).
+
+The owner still reads it as glitchy. Rendering is now smooth; the problem is how it reads:
+- Time is only shown by block tiles popping in (every 0.5 s on Arc, every 12 s on the other lane). Those discrete steps look like skipped frames.
+- The green Arc dot stops dead at acceptance while the orange dot keeps moving, which looks like a freeze.
+- Nothing visibly ties the two lanes to the same clock.
+- The reserved caption space leaves a big empty gap between the lanes.
+
+Redesign the motion (same story, same keyframes and captions):
+1. Add a "now" playhead: a thin vertical line in ink colour with a small "now" label, sweeping smoothly and continuously left to right across BOTH lanes at exactly the same x (one element spanning both lanes, or two driven by the same value). It is the clock everyone sees.
+2. Before T-4 there is no dot. At T-4 the bid appears ON the playhead in both lanes at the same x.
+3. Arc lane: within 0.5 s a block tile forms under the dot, the dot pops (short scale 1 -> 1.3 -> 1 spring) and turns green with a small "in block" tag. It then stays fixed inside its block, which is correct: it is final. The playhead keeps moving on, so motion never stops.
+4. 12-second lane: the dot rides the playhead (still pending, with a soft pulsing ring) past the close line, until the next 12-second block forms at T+4. Then it drops into that block, turns grey and shows "missed".
+5. Block tiles: fade and grow in over 150 ms instead of popping, so the Arc lane fills like a smooth stream.
+6. Tighten spacing: captions sit directly under each lane in a slot exactly one line high (two on narrow screens), and the gap between lanes is no more than about 24 px. Still no layout shift.
+Typecheck, lint and build. Report the diff.

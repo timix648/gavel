@@ -1,0 +1,5 @@
+Turn 39. Two bugs in turn 38's BlockComparison (src/pages/Landing.tsx). Change nothing else.
+
+1. The playhead is invisible. Its inline style uses backgroundColor: 'rgba(var(--ink-2), 0.5)', but --ink-2 is stored as space-separated channels ("74 73 67"), so that colour is invalid and the line renders transparent. Use 'rgb(var(--ink-2) / 0.7)' (or the Tailwind class bg-ink-2/70) on both lane playheads, make them 2px wide, and add a tiny "now" label (text-[10px] font-mono text-ink-3) attached to the top of the 12-second lane playhead so it moves with it. Verify the computed background colour is not transparent.
+2. Caption crossfade overlap: when the beat caption changes ("Ten seconds left." to "A bid is sent at 0:04."), both are visible at once and the text overlaps. Same risk for the per-lane captions. Fade in the new caption over 200 ms but hide the outgoing one instantly (opacity 0 with no transition), so two captions are never visible at the same time.
+Typecheck, lint and build. Report the diff.

@@ -667,3 +667,9 @@ Prompt: [prompts/turn36.txt](prompts/turn36.txt). The "12-second chain vs Arc" r
 
 ## Turn 37 (30 Oct): no layout shift in the race panel
 Prompt: [prompts/turn37.txt](prompts/turn37.txt). The owner's screen recording showed the panel jumping when captions appeared ("Closed. The bid is still waiting for a block." pushed the Arc lane down). Studio gave every caption row and the "Back to 0:10" badge a fixed, always-rendered slot, fading text by opacity only. Verified locally over a full loop: both lane labels stayed at one y position on every frame, worst frame 17.7 ms. No hand edits.
+
+## Turns 38-39 (30 Oct): a "now" playhead for the race animation
+Prompts: [turn38](prompts/turn38.txt), [turn39](prompts/turn39.txt). The owner still read the race as glitchy: time was shown only by block tiles popping in, and the Arc dot stopped dead. Studio added a "now" playhead sweeping both lanes at the same x, bids that ride it until they land in a block (a pop and "in block" on Arc, a pending ring then "missed" on the 12-second lane), tiles that fade in, and tighter spacing. Turn 38's playhead was invisible: Studio wrote `rgba(var(--ink-2), 0.5)`, which is invalid because the theme stores colours as space-separated channels. Turn 39 fixed the playhead and the caption crossfade overlap.
+
+### Manual fix 27 (30 Oct)
+The same invalid `rgba(var(--x), a)` pattern remained in 7 places (including the 12-second close line, which was also invisible). Replaced mechanically with `rgb(var(--x) / a)`. Verified in the browser; synced to Studio with the next turn.
