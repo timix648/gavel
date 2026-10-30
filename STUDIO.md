@@ -661,3 +661,6 @@ What I corrected: Studio's pull also rewrote an old v7 address into keeper/index
 
 ## Turn 35 (28 Oct): brand mark
 Prompt: [prompts/turn35.txt](prompts/turn35.txt). I drew the mark as a vector (brand/gavel-mark.svg: a slanted gavel with coin-edge bands and a strike arc) and gave it to Studio, which built `GavelMark` (unique mask ids via useId), swapped it into the header, mobile header and landing header, and replaced the favicon. No hand edits.
+
+## Turn 36 (30 Oct): smooth landing race animation
+Prompt: [prompts/turn36.txt](prompts/turn36.txt). The "12-second chain vs Arc" race dropped frames, froze on hover, and its dots sat off-centre. Studio rebuilt it on one rAF clock with transform-driven dots and tiles revealed by opacity, React re-rendering only on discrete changes, no hover pause, pausing only when off screen or the tab is hidden, and every timer cleared. I verified it locally: 241 frames over 4 s, median 16.7 ms, worst 17.2 ms, and the story keyframes unchanged. No other file and no stats code changed. No hand edits.

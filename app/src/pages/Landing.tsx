@@ -159,91 +159,259 @@ function MiniClock({ secsLeft, flash = false }: { secsLeft: number; flash?: bool
   )
 }
 
+// ── Pre-computed constants used every frame (outside component) ───────────────
+const BID_SENT_P     = 16 / STORY_SECS        // p at T-4
+const BID_ARRIVE_P   = 16.5 / STORY_SECS      // p at T-3.5 (Arc bid lands)
+const SLOW_ARRIVE_P  = 24 / STORY_SECS        // p at T+4   (12-s block)
+const BID_PCT        = toPct(-4)
+const SLOW_TILE_STEPS = [-20, -8, 4] as const
+const ARC_TILE_STEPS: number[] = []
+for (let ts = -20; ts <= 9; ts += 0.5) ARC_TILE_STEPS.push(ts)
+const ARC_TILE_STEPS_LEN = ARC_TILE_STEPS.length
+
+// Discrete state thresholds — React only re-renders when one of these crosses.
+// Encoded as a single integer bitmask to minimise setState calls.
+const FLAG_SLOW_VISIBLE   = 1
+const FLAG_SLOW_ARRIVED   = 2
+const FLAG_ARC_VISIBLE    = 4
+const FLAG_ARC_ARRIVED    = 8
+const FLAG_SLOW_CLOSED    = 16
+const FLAG_SLOW_MISSED    = 32
+const FLAG_ARC_ACCEPTED   = 64
+const FLAG_ARC_SOLD       = 128
+const FLAG_BEAT1          = 256
+const FLAG_BEAT2          = 512
+const FLAG_SLOW_FLASH     = 1024
+const FLAG_ARC_FLASH      = 2048
+const FLAG_PLAYING        = 4096
+const FLAG_P_NONZERO      = 8192
+
+function flagsFromP(p: number, slowFlash: boolean, arcFlash: boolean, playing: boolean): number {
+  const t = storyT(p)
+  let f = 0
+  if (p >= BID_SENT_P)   f |= FLAG_SLOW_VISIBLE | FLAG_ARC_VISIBLE
+  if (p >= SLOW_ARRIVE_P) f |= FLAG_SLOW_ARRIVED
+  if (p >= BID_ARRIVE_P)  f |= FLAG_ARC_ARRIVED
+  if (t >= 0)   f |= FLAG_SLOW_CLOSED
+  if (t >= 4)   f |= FLAG_SLOW_MISSED
+  if (t >= -3.5) f |= FLAG_ARC_ACCEPTED
+  if (t >= 6.5)  f |= FLAG_ARC_SOLD
+  if (t >= -10 && t < -4) f |= FLAG_BEAT1
+  if (t >= -4)   f |= FLAG_BEAT2
+  if (slowFlash) f |= FLAG_SLOW_FLASH
+  if (arcFlash)  f |= FLAG_ARC_FLASH
+  if (playing)   f |= FLAG_PLAYING
+  if (p > 0)     f |= FLAG_P_NONZERO
+  return f
+}
+
 function BlockComparison() {
   const prefersReduced = typeof window !== 'undefined'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-  // p: shared story progress 0..1 (immediately = 1 under reduced-motion)
-  const [p, setP]               = useState(prefersReduced ? 1 : 0)
-  const [playing, setPlaying]   = useState(false)
-  const [hovered, setHovered]   = useState(false)
-  const [arcFlash, setArcFlash] = useState(false)
+  // ── React state: only discrete flags and clock seconds ───────────────────
+  // Dot positions, close-line positions and tile opacity are written imperatively
+  // to DOM refs every frame — never via setState.
+  const [flags, setFlags]       = useState(() => prefersReduced ? flagsFromP(1, false, false, false) : 0)
+  const [slowSec, setSlowSec]   = useState(prefersReduced ? 0 : 20)   // ceil(secsLeft)
+  const [arcSec,  setArcSec]    = useState(prefersReduced ? 0 : 20)
 
-  // Refs for the RAF loop and IntersectionObserver
-  const rafRef      = useRef<number | null>(null)
-  const startRef    = useRef<number>(0)
-  const pausedAtRef = useRef<number>(0)
-  const sectionRef  = useRef<HTMLDivElement>(null)
-  const inViewRef   = useRef(false)
-  const holdTimer   = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const loopTimer   = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const flashFired  = useRef(false)
+  // ── Mutable animation state (refs, never cause re-renders) ───────────────
+  const pRef         = useRef(prefersReduced ? 1 : 0)
+  const startRef     = useRef(0)
+  const pausedAtRef  = useRef(0)
+  const rafRef       = useRef<number | null>(null)
+  const holdTimer    = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const loopTimer    = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const arcFlashT    = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const slowFlashT   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const arcFlashRef  = useRef(false)
+  const slowFlashRef = useRef(false)
+  const arcFlashFired  = useRef(false)
+  const slowFlashFired = useRef(false)
+  const inViewRef    = useRef(false)
+  const sectionRef   = useRef<HTMLDivElement>(null)
+  const mountedRef   = useRef(true)
 
-  const stopRAF = useCallback(() => {
-    if (rafRef.current != null) { cancelAnimationFrame(rafRef.current); rafRef.current = null }
-    if (holdTimer.current)      { clearTimeout(holdTimer.current);      holdTimer.current = null }
-    if (loopTimer.current)      { clearTimeout(loopTimer.current);      loopTimer.current = null }
+  // ── DOM refs for imperative updates (no React render each frame) ──────────
+  const slowDotRef    = useRef<HTMLDivElement>(null)
+  const arcDotRef     = useRef<HTMLDivElement>(null)
+  const slowPendRef   = useRef<HTMLSpanElement>(null)
+  const arcCloseRef   = useRef<HTMLDivElement>(null)
+  const arcTileRefs   = useRef<(HTMLDivElement | null)[]>([])
+  const slow12CloseRef = useRef<HTMLDivElement>(null)
+
+  // ── Imperative frame writer — called every RAF tick ───────────────────────
+  const writeFrame = useCallback((p: number, slowFlash: boolean) => {
+    const t = storyT(p)
+
+    // ── Dot positions ──────────────────────────────────────────────────────
+    if (p >= BID_SENT_P) {
+      const slowX = p >= SLOW_ARRIVE_P
+        ? toPct(4)
+        : BID_PCT + ((p - BID_SENT_P) / (SLOW_ARRIVE_P - BID_SENT_P)) * (toPct(4) - BID_PCT)
+      const arcX = p >= BID_ARRIVE_P
+        ? toPct(-3.5)
+        : BID_PCT + ((p - BID_SENT_P) / (BID_ARRIVE_P - BID_SENT_P)) * (toPct(-3.5) - BID_PCT)
+
+      if (slowDotRef.current) {
+        slowDotRef.current.style.left = `${slowX}%`
+        slowDotRef.current.style.display = 'block'
+        const arrived = p >= SLOW_ARRIVE_P
+        slowDotRef.current.className = [
+          'absolute w-3 h-3 rounded-full border-2 transition-colors duration-200',
+          arrived ? 'bg-surface border-ink-3' : 'bg-accent border-accent/40',
+        ].join(' ')
+        // Pending label
+        if (slowPendRef.current) {
+          const showPend = !arrived && t >= 0
+          slowPendRef.current.style.display = showPend ? 'block' : 'none'
+          if (showPend) slowPendRef.current.style.left = `${slowX}%`
+        }
+      }
+      if (arcDotRef.current) {
+        arcDotRef.current.style.left = `${arcX}%`
+        arcDotRef.current.style.display = 'block'
+        arcDotRef.current.className = [
+          'absolute w-3 h-3 rounded-full border-2 transition-colors duration-200',
+          p >= BID_ARRIVE_P ? 'bg-good border-good/40' : 'bg-accent border-accent/40',
+        ].join(' ')
+      }
+    } else {
+      if (slowDotRef.current) slowDotRef.current.style.display = 'none'
+      if (arcDotRef.current)  arcDotRef.current.style.display  = 'none'
+      if (slowPendRef.current) slowPendRef.current.style.display = 'none'
+    }
+
+    // ── Arc close line position ────────────────────────────────────────────
+    if (arcCloseRef.current) {
+      const arcClosePct = t >= -3.5 ? toPct(6.5) : toPct(0)
+      arcCloseRef.current.style.left = `${arcClosePct}%`
+      // Enable CSS transition only after p > 0 (not during loop reset)
+      arcCloseRef.current.style.transition = p > 0 ? 'left 0.3s' : 'none'
+    }
+
+    // ── 12-s close line flash ─────────────────────────────────────────────
+    if (slow12CloseRef.current) {
+      slow12CloseRef.current.style.backgroundColor = slowFlash
+        ? 'rgb(var(--warn))'
+        : 'rgba(var(--ink-3), 0.6)'
+    }
+
+    // ── Arc tile opacity: reveal tiles as t advances ───────────────────────
+    for (let i = 0; i < ARC_TILE_STEPS_LEN; i++) {
+      const el = arcTileRefs.current[i]
+      if (el) el.style.opacity = t >= ARC_TILE_STEPS[i] ? '1' : '0'
+    }
   }, [])
 
+  // ── Clear all timers ──────────────────────────────────────────────────────
+  const clearAllTimers = useCallback(() => {
+    if (rafRef.current != null)  { cancelAnimationFrame(rafRef.current); rafRef.current = null }
+    if (holdTimer.current)       { clearTimeout(holdTimer.current);      holdTimer.current = null }
+    if (loopTimer.current)       { clearTimeout(loopTimer.current);      loopTimer.current = null }
+    if (arcFlashT.current)       { clearTimeout(arcFlashT.current);      arcFlashT.current = null }
+    if (slowFlashT.current)      { clearTimeout(slowFlashT.current);     slowFlashT.current = null }
+  }, [])
+
+  // ── Compute and push React state changes for discrete thresholds ──────────
+  const pushDiscreteState = useCallback((p: number, slowFlash: boolean, arcFlash: boolean, playing: boolean) => {
+    const t = storyT(p)
+    const newFlags = flagsFromP(p, slowFlash, arcFlash, playing)
+    setFlags(prev => prev !== newFlags ? newFlags : prev)
+
+    const newSlowSec = Math.ceil(Math.max(0, -t))
+    setSlowSec(prev => prev !== newSlowSec ? newSlowSec : prev)
+    const newArcSec  = Math.ceil(t < -3.5 ? Math.max(0, -t) : Math.max(0, 6.5 - t))
+    setArcSec(prev => prev !== newArcSec ? newArcSec : prev)
+  }, [])
+
+  // ── Main animation loop ───────────────────────────────────────────────────
   const startFrom = useCallback((elapsed: number) => {
-    if (prefersReduced) return
-    stopRAF()
-    flashFired.current = false
+    if (prefersReduced || !mountedRef.current) return
+    clearAllTimers()
+    arcFlashFired.current  = false
+    slowFlashFired.current = false
+    arcFlashRef.current    = false
+    slowFlashRef.current   = false
     startRef.current = performance.now() - elapsed
-    setPlaying(true)
+
+    // Immediately push playing=true to React
+    pushDiscreteState(pRef.current, false, false, true)
+
     const tick = (now: number) => {
+      if (!mountedRef.current) return
       const wallElapsed = now - startRef.current
       const newP = Math.min(1, wallElapsed / WALL_MS)
-      setP(newP)
-      // Arc flash fires once when Arc bid lands (T-3.5 = p=16.5/29)
-      if (!flashFired.current && newP >= 16.5 / STORY_SECS) {
-        flashFired.current = true
-        setArcFlash(true)
-        setTimeout(() => setArcFlash(false), 700)
+      pRef.current = newP
+
+      // Arc flash fires once at BID_ARRIVE_P
+      if (!arcFlashFired.current && newP >= BID_ARRIVE_P) {
+        arcFlashFired.current = true
+        arcFlashRef.current   = true
+        arcFlashT.current = setTimeout(() => {
+          if (!mountedRef.current) return
+          arcFlashRef.current = false
+          pushDiscreteState(pRef.current, slowFlashRef.current, false, true)
+        }, 700)
       }
+      // 12-s flash fires once at T=0
+      if (!slowFlashFired.current && storyT(newP) >= 0) {
+        slowFlashFired.current = true
+        slowFlashRef.current   = true
+        slowFlashT.current = setTimeout(() => {
+          if (!mountedRef.current) return
+          slowFlashRef.current = false
+          pushDiscreteState(pRef.current, false, arcFlashRef.current, true)
+        }, 500)
+      }
+
+      // GPU-only writes every frame
+      writeFrame(newP, slowFlashRef.current)
+
+      // Push React state only when a discrete threshold changes
+      pushDiscreteState(newP, slowFlashRef.current, arcFlashRef.current, true)
+
       if (newP < 1) {
         rafRef.current = requestAnimationFrame(tick)
       } else {
-        setPlaying(false)
+        pushDiscreteState(1, slowFlashRef.current, arcFlashRef.current, false)
         holdTimer.current = setTimeout(() => {
-          if (inViewRef.current) {
-            setP(0)
-            flashFired.current = false
-            loopTimer.current = setTimeout(() => {
-              if (inViewRef.current) startFrom(0)
-            }, 120)
-          }
+          if (!mountedRef.current || !inViewRef.current) return
+          // Reset to p=0
+          pRef.current = 0
+          arcFlashRef.current  = false
+          slowFlashRef.current = false
+          writeFrame(0, false)
+          pushDiscreteState(0, false, false, false)
+          loopTimer.current = setTimeout(() => {
+            if (mountedRef.current && inViewRef.current) startFrom(0)
+          }, 120)
         }, HOLD_MS)
       }
     }
     rafRef.current = requestAnimationFrame(tick)
-  }, [prefersReduced, stopRAF])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefersReduced, clearAllTimers, writeFrame, pushDiscreteState])
 
-  const pause = useCallback(() => {
-    if (!playing) return
-    pausedAtRef.current = performance.now() - startRef.current
-    stopRAF()
-    setPlaying(false)
-  }, [playing, stopRAF])
-
-  const resume = useCallback(() => {
-    if (prefersReduced || !inViewRef.current) return
-    startFrom(pausedAtRef.current)
-  }, [prefersReduced, startFrom])
-
-  // Autoplay: fire when >= 50% in view, pause when out
+  // ── IntersectionObserver: play when in view, pause when not ───────────────
   useEffect(() => {
-    if (prefersReduced) return
+    if (prefersReduced) {
+      // Show final frame immediately
+      writeFrame(1, false)
+      return
+    }
     const el = sectionRef.current
     if (!el) return
     const obs = new IntersectionObserver(entries => {
       const vis = entries[0].isIntersecting
       inViewRef.current = vis
-      if (vis && !hovered) startFrom(pausedAtRef.current)
-      else if (!vis) {
+      if (vis) {
+        startFrom(pausedAtRef.current)
+      } else {
         pausedAtRef.current = performance.now() - startRef.current
-        stopRAF()
-        setPlaying(false)
+        clearAllTimers()
+        pushDiscreteState(pRef.current, slowFlashRef.current, arcFlashRef.current, false)
       }
     }, { threshold: 0.5 })
     obs.observe(el)
@@ -251,119 +419,55 @@ function BlockComparison() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefersReduced])
 
-  // Pause/resume on hover or focus
+  // ── document.visibilitychange: pause/resume ───────────────────────────────
   useEffect(() => {
-    if (hovered) pause()
-    else if (inViewRef.current) resume()
+    if (prefersReduced) return
+    const onVisChange = () => {
+      if (document.hidden) {
+        pausedAtRef.current = performance.now() - startRef.current
+        clearAllTimers()
+        pushDiscreteState(pRef.current, slowFlashRef.current, arcFlashRef.current, false)
+      } else if (inViewRef.current) {
+        startFrom(pausedAtRef.current)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisChange)
+    return () => document.removeEventListener('visibilitychange', onVisChange)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hovered])
+  }, [prefersReduced])
 
+  // ── Cleanup on unmount ────────────────────────────────────────────────────
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false; clearAllTimers() }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ── Watch-again button ────────────────────────────────────────────────────
   const watchAgain = useCallback(() => {
     pausedAtRef.current = 0
-    setP(0)
-    flashFired.current = false
+    pRef.current = 0
+    writeFrame(0, false)
+    arcFlashRef.current  = false
+    slowFlashRef.current = false
     startFrom(0)
-  }, [startFrom])
+  }, [startFrom, writeFrame])
 
-  // ── All derived values from p ─────────────────────────────────────────────
-  const t = storyT(p)   // story-time: -20..+9
-
-  // ── 12-second lane clock ──────────────────────────────────────────────────
-  // Counts down from 20 to 0 at T=0, then holds at 0.
-  const slowSecsLeft = Math.max(0, -t)
-
-  // ── Arc lane clock ────────────────────────────────────────────────────────
-  // T-20 → T-3.5: counts 20 → 3.5 (i.e. max(0, -t))
-  // T-3.5: bid accepted, deadline becomes T+6.5.  clock jumps to 10 and counts down.
-  // T+6.5 → T+9: holds at 0.
-  const arcSecsLeft = t < -3.5
-    ? Math.max(0, -t)                  // 20 → 3.5 (then jump)
-    : Math.max(0, 6.5 - t)            // 10 → 0, holds at 0
-
-  // ── Beat captions (shared) ────────────────────────────────────────────────
-  // beat 0: t < -10
-  // beat 1: T-10 .. T-4   "Ten seconds left."
-  // beat 2: T-4  .. T=0   "A bid is sent at 0:04."
-  // (per-lane captions fire at their own thresholds below)
-  const beat = t >= -4 ? 2 : t >= -10 ? 1 : 0
+  // ── Derive display values from flags (no per-frame state) ─────────────────
+  const playing      = !!(flags & FLAG_PLAYING)
+  const beat         = (flags & FLAG_BEAT2) ? 2 : (flags & FLAG_BEAT1) ? 1 : 0
+  const slowFlash    = !!(flags & FLAG_SLOW_FLASH)
+  const arcFlash     = !!(flags & FLAG_ARC_FLASH)
+  const slowClosed   = !!(flags & FLAG_SLOW_CLOSED)
+  const slowMissed   = !!(flags & FLAG_SLOW_MISSED)
+  const arcAccepted  = !!(flags & FLAG_ARC_ACCEPTED)
+  const arcSold      = !!(flags & FLAG_ARC_SOLD)
+  const pNonzero     = !!(flags & FLAG_P_NONZERO)
   const BEAT_CAPTIONS = ['', 'Ten seconds left.', 'A bid is sent at 0:04.']
-
-  // ── Per-lane outcome captions ─────────────────────────────────────────────
-  // 12-s: "Closed." at T=0; "Missed." at T+4
-  const slowClosed  = t >= 0
-  const slowMissed  = t >= 4
-  // Arc: "Accepted." at T-3.5; "Sold." at T+6.5
-  const arcAccepted = t >= -3.5
-  const arcSold     = t >= 6.5
-
-  // ── 12-s lane block tiles ─────────────────────────────────────────────────
-  // Blocks every 12 s: T-20, T-8, then T+4, which is after the close line
-  const slowTiles: { storySec: number }[] = [
-    { storySec: -20 },
-    { storySec:  -8 },
-    { storySec:   4 },
-  ]
-  const closePct12 = toPct(0)   // 12-s close line: fixed at T=0
-
-  // ── Arc lane block tiles ──────────────────────────────────────────────────
-  // Dense tiles every 0.5 s from T-20 to T+9
-  const arcTileSteps: number[] = []
-  for (let ts = -20; ts <= 9; ts += 0.5) arcTileSteps.push(ts)
-
-  // Arc close line: fixed at T=0 until T-3.5, then jumps to T+6.5 (deadline = T+6.5)
-  const arcClosePct = t >= -3.5 ? toPct(6.5) : toPct(0)
-
-  // ── Bid dot positions ─────────────────────────────────────────────────────
-  // Both dots leave from toPct(-4) at T-4.
-  const bidSentP  = 16 / STORY_SECS   // p at T-4
-  const bidPct    = toPct(-4)
-
-  // 12-s dot: travels from T-4 to T+4 (next block), arriving at p=24/29.
-  // After arrival it stays at toPct(4) and turns ink-3.
-  const slowBidVisible  = p >= bidSentP
-  const slowBidArrived  = p >= 24 / STORY_SECS
-  const slowBidX = (() => {
-    if (!slowBidVisible) return bidPct
-    if (slowBidArrived)  return toPct(4)
-    return bidPct + ((p - bidSentP) / (24 / STORY_SECS - bidSentP)) * (toPct(4) - bidPct)
-  })()
-
-  // Arc dot: travels from T-4 to T-3.5 (0.5-s block), arriving at p=16.5/29.
-  // Dot becomes --good on arrival.
-  const arcBidArriveP  = 16.5 / STORY_SECS
-  const arcBidVisible  = p >= bidSentP
-  const arcBidArrived  = p >= arcBidArriveP
-  const arcBidX = (() => {
-    if (!arcBidVisible) return bidPct
-    if (arcBidArrived)  return toPct(-3.5)
-    return bidPct + ((p - bidSentP) / (arcBidArriveP - bidSentP)) * (toPct(-3.5) - bidPct)
-  })()
-
-  // ── 12-s close line flash (fires once at T=0) ──────────────────────────────
-  const [slowFlash, setSlowFlash] = useState(false)
-  const slowFlashFired = useRef(false)
-  useEffect(() => {
-    if (slowFlashFired.current) return
-    if (t >= 0) {
-      slowFlashFired.current = true
-      setSlowFlash(true)
-      setTimeout(() => setSlowFlash(false), 500)
-    }
-  }, [t])
-  // Reset slow flash tracking when animation loops (p resets to 0)
-  useEffect(() => {
-    if (p === 0) { slowFlashFired.current = false; setSlowFlash(false) }
-  }, [p])
+  const closePct12   = toPct(0)
 
   return (
-    <div
-      ref={sectionRef}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onFocus={() => setHovered(true)}
-      onBlur={() => setHovered(false)}
-      className="space-y-0"
-    >
+    <div ref={sectionRef} className="space-y-0">
       {/* Accessible summary */}
       <p className="sr-only">
         Animation comparing block finality. On a 12-second-block chain, a bid placed at
@@ -397,53 +501,51 @@ function BlockComparison() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono text-ink-3 tracking-wide">12-second blocks</span>
-            <MiniClock secsLeft={Math.ceil(slowSecsLeft)} flash={slowFlash} />
+            <MiniClock secsLeft={slowSec} flash={slowFlash} />
           </div>
 
           <div className="relative h-10 bg-surface-2 rounded-[6px] overflow-hidden">
-            {/* Block tiles */}
-            {slowTiles.map(({ storySec }) => t >= storySec && (
+            {/* Block tiles: 3 tiles, mounted once, revealed by discrete flag crosses */}
+            {SLOW_TILE_STEPS.map((storySec) => (
               <motion.div
                 key={storySec}
                 initial={{ scaleY: 0, opacity: 0.4 }}
-                animate={{ scaleY: 1, opacity: 1 }}
+                animate={
+                  // Only animate in when the threshold has been crossed
+                  storyT(pRef.current) >= storySec
+                    ? { scaleY: 1, opacity: 1 }
+                    : { scaleY: 0, opacity: 0.4 }
+                }
                 transition={{ duration: 0.15 }}
                 className="absolute top-1 bottom-1 w-[18px] -ml-[9px] rounded-[3px] bg-line border border-line/60"
                 style={{ left: `clamp(10px, ${toPct(storySec)}%, calc(100% - 10px))` }}
               />
             ))}
 
-            {/* Close line (fixed) */}
+            {/* Close line (fixed position, colour driven imperatively) */}
             <div
-              className={[
-                'absolute top-0 bottom-0 w-px transition-colors duration-300',
-                slowFlash ? 'bg-warn' : 'bg-ink-3/60',
-              ].join(' ')}
-              style={{ left: `${closePct12}%` }}
+              ref={slow12CloseRef}
+              className="absolute top-0 bottom-0 w-px transition-colors duration-300"
+              style={{ left: `${closePct12}%`, backgroundColor: 'rgba(var(--ink-3), 0.6)' }}
             />
 
-            {/* Bid dot */}
-            {slowBidVisible && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className={[
-                  'absolute top-1/2 -translate-y-1/2 w-3 h-3 -ml-1.5 rounded-full border-2 transition-colors duration-200',
-                  slowBidArrived ? 'bg-surface border-ink-3' : 'bg-accent border-accent/40',
-                ].join(' ')}
-                style={{ left: `${slowBidX}%` }}
-              />
-            )}
+            {/* Bid dot — position and colour written imperatively every frame */}
+            {/* Centred with top+marginTop instead of top-1/2 -translate-y-1/2
+                so Motion's scale animation doesn't conflict with Tailwind's transform */}
+            <div
+              ref={slowDotRef}
+              style={{ display: 'none', top: '50%', marginTop: '-6px', marginLeft: '-6px' }}
+              className="absolute w-3 h-3 rounded-full border-2 bg-accent border-accent/40 transition-colors duration-200"
+            />
 
-            {/* "pending" label: dot is past close but not yet in a block */}
-            {slowBidVisible && !slowBidArrived && slowClosed && (
-              <span
-                className="absolute top-1/2 -translate-y-1/2 text-[10px] font-mono text-ink-3 pointer-events-none select-none ml-2"
-                style={{ left: `${slowBidX}%` }}
-              >
-                pending
-              </span>
-            )}
+            {/* "pending" label */}
+            <span
+              ref={slowPendRef}
+              style={{ display: 'none', top: '50%', marginTop: '-8px' }}
+              className="absolute text-[10px] font-mono text-ink-3 pointer-events-none select-none ml-2"
+            >
+              pending
+            </span>
           </div>
 
           {/* Per-lane captions under the 12-s track */}
@@ -486,7 +588,7 @@ function BlockComparison() {
                 where the caption below already says it and the header has no room. */}
             <span className="flex items-center gap-2">
               <AnimatePresence>
-                {arcAccepted && t < 1 && (
+                {arcAccepted && arcSec > 0 && arcSec <= 10 && (
                   <motion.span
                     key="ext"
                     initial={{ opacity: 0, x: 6 }}
@@ -498,39 +600,37 @@ function BlockComparison() {
                   </motion.span>
                 )}
               </AnimatePresence>
-              <MiniClock secsLeft={Math.ceil(arcSecsLeft)} flash={arcFlash} />
+              <MiniClock secsLeft={arcSec} flash={arcFlash} />
             </span>
           </div>
 
           <div className="relative h-10 bg-surface-2 rounded-[6px] overflow-hidden">
-            {/* Dense block tiles */}
-            {arcTileSteps.map((ts) => t >= ts && (
+            {/* Dense tiles: rendered once, opacity toggled imperatively via refs */}
+            {ARC_TILE_STEPS.map((ts, i) => (
               <div
                 key={ts}
+                ref={el => { arcTileRefs.current[i] = el }}
+                style={{
+                  left: `clamp(3px, ${toPct(ts)}%, calc(100% - 3px))`,
+                  opacity: prefersReduced ? 1 : 0,
+                }}
                 className="absolute top-1.5 bottom-1.5 w-[3px] -ml-[1.5px] rounded-[1px] bg-ink-3/40"
-                style={{ left: `clamp(3px, ${toPct(ts)}%, calc(100% - 3px))` }}
               />
             ))}
 
-            {/* Close line — jumps to T+6.5 when Arc bid accepted */}
+            {/* Close line — left written imperatively; transition injected per-frame */}
             <div
-              className={`absolute top-0 bottom-0 w-px bg-accent/70 ${p > 0 ? 'transition-all duration-300' : ''}`}
-              style={{ left: `${arcClosePct}%` }}
+              ref={arcCloseRef}
+              className="absolute top-0 bottom-0 w-px bg-accent/70"
+              style={{ left: `${toPct(pNonzero ? (storyT(pRef.current) >= -3.5 ? 6.5 : 0) : 0)}%` }}
             />
 
-
-            {/* Bid dot */}
-            {arcBidVisible && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className={[
-                  'absolute top-1/2 -translate-y-1/2 w-3 h-3 -ml-1.5 rounded-full border-2 transition-colors duration-200',
-                  arcBidArrived ? 'bg-good border-good/40' : 'bg-accent border-accent/40',
-                ].join(' ')}
-                style={{ left: `${arcBidX}%` }}
-              />
-            )}
+            {/* Bid dot — position written imperatively every frame */}
+            <div
+              ref={arcDotRef}
+              style={{ display: 'none', top: '50%', marginTop: '-6px', marginLeft: '-6px' }}
+              className="absolute w-3 h-3 rounded-full border-2 bg-accent border-accent/40 transition-colors duration-200"
+            />
           </div>
 
           {/* Per-lane captions under Arc track */}

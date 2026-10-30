@@ -1,0 +1,15 @@
+Turn 36. Only the BlockComparison animation in src/pages/Landing.tsx (the "12-second chain vs Arc" race with the two bid dots). Do not touch the stats, the log store, LiveStatsStrip, Proof, or anything that reads the chain.
+
+Users report: the dots stop moving, then skip frames, and the two lanes do not move together. Causes I found:
+1. setP() runs on every requestAnimationFrame, re-rendering the whole component (about 60 arc tiles, motion elements, AnimatePresence captions) at 60 fps, and the dots move by changing CSS `left` in percent, which forces layout each frame. Frames get dropped.
+2. Hovering or focusing the section pauses the animation (pause/resume effect). Users read that as a freeze. Remove hover/focus pausing. Keep pausing only when the section is off screen, and also pause on document.visibilitychange and resume from the same point.
+3. The dots are motion.div with animate={{ scale }} plus the Tailwind class -translate-y-1/2. Motion writes an inline transform that overrides the Tailwind translate, so the dots jump off-centre. Centre them with top/margins (or put the translate in Motion's own style) so no transform conflict exists.
+4. setTimeout calls for the flashes (arcFlash, slowFlash) and the loop timers are not all cleared on loop, unmount or pause, so lanes can drift out of step.
+
+Fix:
+- Drive the animation from ONE clock: a single rAF loop computing p from performance.now(). Move both dots, both close lines and both clocks from that same p each frame.
+- Move the dots with transform translateX on a full-width track (GPU, no layout), written directly to element refs or Motion values (useMotionValue + style={{ x }}), not React state per frame.
+- Re-render React only when a discrete thing changes: a caption beat, a tile appearing, a clock's displayed second, arrived flags. Throttle state updates to those changes.
+- Render all arc tiles once and reveal them with opacity driven by the same p, instead of mounting tiles each frame.
+- Clear every timer on loop, pause and unmount. Keep the story timings exactly as they are (10 s story, 2.5 s hold, same keyframes and captions). Keep prefers-reduced-motion showing the final frame.
+Typecheck, lint and build. Report the diff.
