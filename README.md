@@ -9,8 +9,8 @@ bidder's USDC is released in the same transaction, and at the hammer the lot and
 
 [![Live on Arc mainnet](https://img.shields.io/badge/Live-Arc_mainnet-06b6d4?style=for-the-badge)](https://gavel-alpha.vercel.app)
 [![For reviewers](https://img.shields.io/badge/For-reviewers-3ddc84?style=for-the-badge)](JUDGE.md)
-[![Mainnet volume](https://img.shields.io/badge/Bid_volume-2%2C136_USDC-f97316?style=for-the-badge)](PROOF.md)
-[![Bids](https://img.shields.io/badge/Bids-60_(47_gasless)-8b5cf6?style=for-the-badge)](PROOF.md)
+[![Mainnet volume](https://img.shields.io/badge/Bid_volume-2%2C490_USDC-f97316?style=for-the-badge)](PROOF.md)
+[![Bids](https://img.shields.io/badge/Bids-69_(53_gasless)-8b5cf6?style=for-the-badge)](PROOF.md)
 [![Built in Arc Studio](https://img.shields.io/badge/Built_in-Arc_Studio-8b5cf6?style=for-the-badge)](https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed)
 [![AuctionHouse](https://img.shields.io/badge/AuctionHouse-0xA51A...dEa6-4ea1ff?style=for-the-badge)](https://explorer.arc.io/address/0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6)
 
@@ -30,11 +30,11 @@ Every number below is recomputed from on-chain events by `audit.py` and shown li
 
 | | |
 |---|---|
-| Bid volume | **2,136 USDC** |
-| Bids | **60**, of which **47 gasless** (one signature, no gas) |
-| Lots | **14** listed, **13** sold, across off-chain goods and escrowed EURC |
+| Bid volume | **2,490 USDC** |
+| Bids | **69**, of which **53 gasless** (one signature, no gas) |
+| Lots | **16** listed, **15** sold, across off-chain goods and escrowed EURC |
 | Distinct bidder wallets | 6 |
-| Bids funded by outbid credit (top-up) | 24 |
+| Bids funded by outbid credit (top-up) | 28 |
 | Disputes | 0 |
 | Left in the contract after every sale | **0 USDC, 0 EURC, 0 unclaimed** |
 
@@ -462,7 +462,7 @@ Run with `forge test` in `onchain/`. All 83 pass. Tests 38-53 cover the v7 lot k
 | 21 | RelayedBid_WrongAmount_Reverts | A relayer cannot change the amount |
 | 22 | RelayedBid_Replay_Reverts | The same signature cannot be used twice |
 | 23 | RelayedBid_WrongContract_Reverts | A signature for another contract is rejected |
-| 24 | RelayedBid_ExpiredValidBefore_Reverts | Expired signatures are rejected |
+| 28 | RelayedBid_ExpiredValidBefore_Reverts | Expired signatures are rejected |
 | 25 | RelayedBid_SoftClose_AndRefund | Gasless bids extend the clock and refund the outbid bidder |
 | 26 | RecordSale_OnlyAfterBondReleased | Reputation is written only after the bond resolves |
 | 27 | RecordSale_AlreadyRecorded_Reverts | Each sale is recorded once |

@@ -16,7 +16,7 @@ Deadline: 1 Nov 2026 (DoraHacks: 2 Nov 04:59 UTC). Earlier submissions get earli
 
 ## Rules check (from the DoraHacks page)
 - Built in Arc Studio: yes, 35 turns. Hand fixes are disclosed in STUDIO.md and synced back to Studio.
-- Deployed to Arc mainnet and moved USDC through contract + app: yes: 14 lots, 60 bids, 2,136 USDC of bid volume on v8 (PROOF.md).
+- Deployed to Arc mainnet and moved USDC through contract + app: yes: 16 lots, 69 bids, 2,490 USDC of bid volume on v8 (PROOF.md).
 - Not testnet-only, not a mockup: yes.
 - Not already funded by Circle/Arc: yes.
 - Pseudonymous OK; verification only after selection.
