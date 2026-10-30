@@ -22,3 +22,5 @@ tg.sh
 sl.sh
 slither_run.sh
 turn*-run.log
+
+.claude/
