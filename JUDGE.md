@@ -2,7 +2,7 @@
 
 > **A live auction house where every bid is a USDC transaction on Arc mainnet. Late bids extend the clock; the lot and the payment swap in one transaction.**
 
-Live app: https://gavel-alpha.vercel.app · Live proof (no wallet): https://gavel-alpha.vercel.app/proof · Arc Studio project: https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed
+Demo video: https://youtu.be/_yXopQDl0Go · Live app: https://gavel-alpha.vercel.app · Live proof (no wallet): https://gavel-alpha.vercel.app/proof · Arc Studio project: https://studio.arc.io/app/d49aa346-328f-49aa-b5c9-62e187eca7ed
 
 ## The 60-second path (an Arc wallet with ≥ 0.20 USDC; total spend a few cents)
 1. Open **https://gavel-alpha.vercel.app/lots** and pick a live lot. If none is live, **Create** one: any title, reserve `0.10`, 10 minutes. You post a 0.10 bond, which comes back to you.

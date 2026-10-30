@@ -10,7 +10,7 @@ Deadline: 1 Nov 2026 (DoraHacks: 2 Nov 04:59 UTC). Earlier submissions get earli
 | Contract addresses | AuctionHouse 0xA51A6ac3E1B6954614E25721b1EEf4c7F854dEa6 (+ the 3 others in README) |
 | Example tx + explorer link | Lot 11 settle, 84.67 USDC: https://explorer.arc.io/tx/0xe01c69e1dacc7db88511e1514d72b9ad7047829e5f735c15a5f46d99c99b6652 |
 | Public repo | https://github.com/timix648/gavel |
-| Video walkthrough | _after recording_. Must show the build in Arc Studio AND a mainnet transaction |
+| Video walkthrough | https://youtu.be/_yXopQDl0Go |
 | Short description | Use "One line" + "What Gavel does" from WRITEUP.md |
 | Builder profile | Your GitHub / X / Farcaster |
 

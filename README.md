@@ -8,6 +8,7 @@ The auction ends when the bidding does. A bid in the last ten seconds adds ten s
 bidder's USDC is released in the same transaction, and at the hammer the lot and the payment change hands in one step.
 
 [![Live on Arc mainnet](https://img.shields.io/badge/Live-Arc_mainnet-06b6d4?style=for-the-badge)](https://gavel-alpha.vercel.app)
+[![Demo video](https://img.shields.io/badge/Demo-video-FF0000?style=for-the-badge)](https://youtu.be/_yXopQDl0Go)
 [![For reviewers](https://img.shields.io/badge/For-reviewers-3ddc84?style=for-the-badge)](JUDGE.md)
 [![Mainnet volume](https://img.shields.io/badge/Bid_volume-2%2C490_USDC-f97316?style=for-the-badge)](PROOF.md)
 [![Bids](https://img.shields.io/badge/Bids-69_(53_gasless)-8b5cf6?style=for-the-badge)](PROOF.md)
