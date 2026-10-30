@@ -34,11 +34,12 @@
  * re-scanning from scratch.
  */
 
-import { createPublicClient, decodeEventLog, http, type PublicClient } from 'viem'
+import { decodeEventLog, type PublicClient } from 'viem'
 import {
-  AUCTION_HOUSE_ADDRESS, CHAIN, CHAIN_ID, DEPLOY_BLOCK,
-  LOGS_CHUNK_SIZE, LOGS_MIN_INTERVAL_MS, RPC_URLS,
+  AUCTION_HOUSE_ADDRESS, CHAIN_ID, DEPLOY_BLOCK,
+  LOGS_CHUNK_SIZE, LOGS_MIN_INTERVAL_MS,
 } from './chain'
+import { publicClient as _defaultClient } from './rpc'
 import auctionHouseArtifact from '../contracts/out/AuctionHouse.sol/AuctionHouse.json'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -84,28 +85,7 @@ function isRangeSizeError(e: unknown): boolean {
   )
 }
 
-// ── RPC URL rotation ──────────────────────────────────────────────────────────
-
-const LOG_RATELIMIT_THRESHOLD = 3  // consecutive rate-limit hits before rotating
-let _rpcIndex = 0
-let _consecutiveRateLimits = 0
-
-function currentRpcUrl(): string {
-  return RPC_URLS[_rpcIndex % RPC_URLS.length]
-}
-
-function onRateLimitHit() {
-  _consecutiveRateLimits++
-  if (_consecutiveRateLimits >= LOG_RATELIMIT_THRESHOLD && RPC_URLS.length > 1) {
-    _rpcIndex = (_rpcIndex + 1) % RPC_URLS.length
-    _consecutiveRateLimits = 0
-    console.warn(`[logStore] Rate limit threshold reached, rotating to RPC: ${currentRpcUrl()}`)
-  }
-}
-
-function onSuccess() {
-  _consecutiveRateLimits = 0
-}
+// RPC rotation is handled by the viem fallback transport in src/rpc.ts.
 
 // ── localStorage persistence ──────────────────────────────────────────────────
 
@@ -127,7 +107,7 @@ interface PersistedCache {
 const BIG_TAG = '$big'
 const bigReplacer = (_k: string, v: unknown) => (typeof v === 'bigint' ? { [BIG_TAG]: v.toString() } : v)
 const bigReviver = (_k: string, v: unknown) =>
-  (v && typeof v === 'object' && BIG_TAG in (v as Record<string, unknown>) && Object.keys(v as object).length === 1
+  (v && typeof v === 'object' && BIG_TAG in (v as Record<string, unknown>) && Object.keys(v).length === 1
     ? BigInt((v as Record<string, string>)[BIG_TAG])
     : v)
 
@@ -285,7 +265,6 @@ async function fetchRange(
           fromBlock: from,
           toBlock:   chunkTo,
         })
-        onSuccess()
         // If we halved to get here, remember the working size for future calls
         if (attempt < _learnedChunkSize) {
           _learnedChunkSize = attempt < MIN_CHUNK ? MIN_CHUNK : attempt
@@ -314,7 +293,6 @@ async function fetchRange(
 
       } catch (e: unknown) {
         if (isRateLimitError(e)) {
-          onRateLimitHit()
           const backoffMs  = RATE_LIMIT_BACKOFF_MS[rl]
           const waitMs     = jitter(backoffMs)
           const resumeAt   = Date.now() + waitMs
@@ -370,11 +348,8 @@ export async function scanLogs(
   _scanning = true
   _error    = null
 
-  // Build a client from the current RPC URL when not provided by React context.
-  const client = clientOverride ?? createPublicClient({
-    chain:     CHAIN,
-    transport: http(currentRpcUrl()),
-  })
+  // Use the shared fallback transport client when not provided by the React context.
+  const client = clientOverride ?? _defaultClient
 
   function onPauseNotify(_resumeMs: number) {
     // Subscribers get notified of the error state change so UI can update.

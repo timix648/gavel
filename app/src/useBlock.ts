@@ -9,8 +9,7 @@
  * card. Polling pauses while the tab is hidden.
  */
 import { useEffect, useState, useSyncExternalStore } from 'react'
-import { createPublicClient, http } from 'viem'
-import { CHAIN, RPC_URL } from './chain'
+import { publicClient } from './rpc'
 
 export interface BlockInfo {
   blockTimestamp: bigint   // block.timestamp (seconds)
@@ -20,10 +19,7 @@ export interface BlockInfo {
 /** How often the shared poller asks for the latest block. Countdowns interpolate between polls. */
 export const BLOCK_POLL_MS = 2000
 
-const client = createPublicClient({
-  chain: CHAIN,
-  transport: http(RPC_URL, { retryCount: 2, retryDelay: 1500 }),
-})
+const client = publicClient
 
 let current: BlockInfo | undefined
 /** Wall-clock ms when `current` was received, for interpolating chain time between polls. */

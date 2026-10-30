@@ -234,35 +234,41 @@ export default function AuctionRoom() {
     l => l.name === 'Hammer' && typeof l.args.lotId === 'bigint' && l.args.lotId === lotId
   )?.transactionHash ?? ''
 
-  // ── Live watchers ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!client) return
-    let cancelled = false
-    let unsubExt: (() => void) | null = null
-    let unsubBid: (() => void) | null = null
-    let retryT: ReturnType<typeof setTimeout> | null = null
-    const BACK = [1000, 2000, 4000, 8000, 16000, 30000]
-    let att = 0
+  // BuyerRefunded log for this lot — only present when the seller explicitly
+  // issued a refund. CLOSED without this log = normal delivery confirmed.
+  const buyerRefundedLog = allStoreLogs.find(
+    l => l.name === 'BuyerRefunded' && typeof l.args.lotId === 'bigint' && l.args.lotId === lotId
+  )
+  const buyerWasRefunded = !!buyerRefundedLog
+  const refundedReason   = typeof buyerRefundedLog?.args.reason === 'string'
+    ? buyerRefundedLog.args.reason : ''
 
-    function start() {
-      if (cancelled) return
-      try {
-        unsubExt = client!.watchContractEvent({ address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, eventName: 'Extended', args: { lotId }, onLogs: () => { void fetchLot() }, onError: err })
-        unsubBid = client!.watchContractEvent({ address: AUCTION_HOUSE_ADDRESS, abi: AUCTION_HOUSE_ABI, eventName: 'Bid',      args: { lotId }, onLogs: () => { void fetchLot() }, onError: err })
-        att = 0
-      } catch (e) { err(e as Error) }
-    }
-    function err(e: Error) {
-      if (cancelled) return
-      unsubExt?.(); unsubBid?.(); unsubExt = unsubBid = null
-      const isRL = e.message?.toLowerCase().includes('rate') || e.message?.includes('-32005')
-      const delay = BACK[Math.min(att, BACK.length - 1)] * (isRL ? 1 : 0.5)
-      att++
-      retryT = setTimeout(start, delay + Math.random() * 500)
-    }
-    start()
-    return () => { cancelled = true; if (retryT) clearTimeout(retryT); unsubExt?.(); unsubBid?.() }
-  }, [client, lotId, fetchLot])
+  // ── Live updates via the shared log store ─────────────────────────────────
+  // No watchContractEvent — that creates a second eth_newFilter/eth_blockNumber
+  // poller on top of useLatestBlock's shared 2 s tick. Instead, re-fetch the
+  // lot whenever the log store delivers a Bid or Extended for this lotId, and
+  // as a safety net on every new block while the lot is live (capped at 4 s).
+  const lastFetchBlockRef = useRef(0n)
+  useEffect(() => {
+    const relevant = allStoreLogs.filter(
+      l => (l.name === 'Bid' || l.name === 'Extended') &&
+           typeof l.args.lotId === 'bigint' && l.args.lotId === lotId
+    )
+    if (relevant.length === 0) return
+    void fetchLot()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allStoreLogs.length, lotId])
+
+  // Block-based safety net: re-fetch at most every 4 s while the lot is live.
+  useEffect(() => {
+    const bn = block?.blockNumber ?? 0n
+    if (!lot || lot.settled || lot.cancelled) return        // settled — no need
+    if (bn === lastFetchBlockRef.current) return            // already fetched this block
+    if (bn - lastFetchBlockRef.current < 2n) return        // throttle: ~4 s at 2 s/block
+    lastFetchBlockRef.current = bn
+    void fetchLot()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [block?.blockNumber])
 
   // ── Countdown ──────────────────────────────────────────────────────────────
   const { secs, extended } = useCountdown(lot ? Number(lot.deadline) : 0)
@@ -1186,11 +1192,20 @@ export default function AuctionRoom() {
             </div>
           )}
 
-          {/* B4: Refunded notice */}
+          {/* B4: Refunded / delivery confirmed notice (CLOSED state) */}
           {!isOnchainKind && isSold && escState === EscrowState.CLOSED && isWinner && (
-            <div className="rounded-panel border border-line bg-surface-2 px-4 py-3">
-              <p className="text-xs text-ink-2">Payment refunded by the seller.</p>
-            </div>
+            buyerWasRefunded ? (
+              <div className="rounded-panel border border-line bg-surface-2 px-4 py-3 space-y-1">
+                <p className="text-xs font-medium text-ink-2">Payment refunded by the seller.</p>
+                {refundedReason ? (
+                  <p className="text-xs text-ink-3">{refundedReason}</p>
+                ) : null}
+              </div>
+            ) : (
+              <div className="rounded-panel border border-good/30 bg-good/5 px-4 py-3">
+                <p className="text-xs text-good">Delivery confirmed. Seller paid.</p>
+              </div>
+            )
           )}
 
           {/* B5: Evidence panel on HELD or DISPUTED OFFCHAIN lots */}

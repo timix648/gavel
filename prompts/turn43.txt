@@ -1,0 +1,22 @@
+Turn 43. Frontend only. Do not change any contract or how stats are counted.
+
+The owner keeps hitting RPC rate limits (429 / -32005) with a few people on one network. Two causes: one endpoint, and duplicate pollers.
+
+A. Multiple RPC endpoints (all verified today: chainId 0x13b2, no API key, CORS allowed, eth_getLogs works):
+   https://rpc.mainnet.arc.io
+   https://rpc.quicknode.mainnet.arc.io
+   https://rpc.blockdaemon.mainnet.arc.io
+   https://rpc.drpc.mainnet.arc.io   (free plan: eth_getLogs max 10,000 blocks per call)
+1. In src/chain.ts set RPC_URLS to VITE_RPC_URL (if set) followed by those four.
+2. Create ONE shared transport helper (src/rpc.ts) that builds viem fallback([...RPC_URLS].map(u => http(u, { batch: { wait: 20 }, retryCount: 0, timeout: 10_000 })), { retryCount: 2, retryDelay: 400 }). Shuffle the order once per page load (keeping VITE_RPC_URL first if set) so visitors spread across providers. On a 429/-32005 the fallback moves to the next endpoint immediately.
+3. Use that transport everywhere a client is created: src/config.ts (wagmi transports), src/useBlock.ts, src/logStore.ts (replace its own URL cycling), and any other createPublicClient/http() in src (grep for them).
+4. Set LOGS_CHUNK_SIZE to 9_000n so every provider accepts it.
+
+B. Remove duplicate polling (keep behaviour the same):
+1. useBlockWatcher in src/useLogs.ts runs its own client.watchBlockNumber on top of useBlock's shared 2 s poller. Make it subscribe to the shared useBlock poller instead (scanLogs on each new block from that poller). Only one block poller may exist in the app.
+2. AuctionRoom.tsx creates two watchContractEvent watchers (Bid, Extended), each polling its own filter. Remove them; instead call fetchLot when the shared log store receives a new Bid or Extended log for this lotId (or, as a fallback, on a new block from the shared poller at most every 4 s while the lot is live, and never once it is settled).
+3. Make sure no other setInterval/watch* in src polls the RPC on its own (countdown timers that only use local time are fine).
+
+C. Bug: AuctionRoom.tsx shows "Payment refunded by the seller." to the winner whenever escrowState is CLOSED, even after a normal confirmDelivery (lot 15 on mainnet: CLOSED, no BuyerRefunded event, the seller was paid). Show the refund notice only when a BuyerRefunded log exists for this lotId (include its reason if available). Otherwise, when CLOSED, show "Delivery confirmed. Seller paid." (or nothing extra if the existing "Escrow closed. Funds released." card already covers it).
+
+Typecheck, lint and build. Report the diff and list every RPC poller left in the app with its interval.

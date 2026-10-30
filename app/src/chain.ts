@@ -89,20 +89,29 @@ export const USYC_WARNING  = 'USYC is a permissioned token. Only KYC-eligible wa
 export const MEMO_ADDRESS = '0x5294E9927c3306DcBaDb03fe70b92e01cCede505' as const
 
 /**
- * Ordered list of RPC endpoints. The log store cycles to the next URL after
- * repeated rate-limit responses. Add a private provider URL (e.g. Alchemy / Infura)
- * as the first entry to avoid being throttled by the public endpoint.
+ * All known public RPC endpoints for Arc Mainnet (chainId 5042).
+ * Verified: correct chainId, CORS allowed, eth_getLogs works.
+ * drpc has a 10 000-block getLogs cap on the free plan, which is why
+ * LOGS_CHUNK_SIZE is 9 000 (fits every provider).
  *
- * For now only the public RPC is listed; leave a comment here when adding a provider:
- *   'https://arc-mainnet.g.alchemy.com/v2/<KEY>',  // add before the public URL
+ * src/rpc.ts builds a viem fallback() transport over these so a 429 on one
+ * endpoint automatically falls through to the next. Set VITE_RPC_URL to a
+ * private provider URL and it will be tried first.
  */
+const _PUBLIC_RPCS = [
+  'https://rpc.mainnet.arc.io',
+  'https://rpc.quicknode.mainnet.arc.io',
+  'https://rpc.blockdaemon.mainnet.arc.io',
+  'https://rpc.drpc.mainnet.arc.io',
+] as const
+
 export const RPC_URLS: readonly string[] = [
-  // VITE_RPC_URL (a private provider URL set in the hosting env) is tried first.
   ...(import.meta.env.VITE_RPC_URL ? [String(import.meta.env.VITE_RPC_URL)] : []),
-  'https://rpc.mainnet.arc.io',   // public — leave as fallback
+  ..._PUBLIC_RPCS,
 ]
 
-/** The RPC every client in the app uses by default: the provider URL if set, else the public RPC. */
+/** Primary RPC URL — used only where a single URL is unavoidable (wagmi chain config).
+ *  Most callers should import the fallback transport from src/rpc.ts instead. */
 export const RPC_URL: string = RPC_URLS[0]
 
 /**
@@ -120,7 +129,8 @@ export const RELAYER_URL = 'http://localhost:3001'
  * error ("query returned more than N results", "block range too large", etc.).
  * Replace with a smaller value if your RPC demands it.
  */
-export const LOGS_CHUNK_SIZE = 10_000n
+// 9 000 fits every provider (drpc free plan caps eth_getLogs at 10 000 blocks).
+export const LOGS_CHUNK_SIZE = 9_000n
 
 /** Minimum inter-call delay (ms) to stay within the public RPC's request rate. */
 export const LOGS_MIN_INTERVAL_MS = 400

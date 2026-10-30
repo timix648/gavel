@@ -12,6 +12,7 @@ import {
   scanLogs, subscribe, getLogs, getHighWater, getError, getPausedUntil, isScanning,
   type DecodedLog,
 } from './logStore'
+import { useLatestBlock } from './useBlock'
 
 // Re-export DecodedLog as AnyLog for backward compat with Proof.tsx / AuctionRoom.
 export type AnyLog = DecodedLog
@@ -68,21 +69,20 @@ export function useLogStore() {
 
 // ── useBlockWatcher ───────────────────────────────────────────────────────────
 /**
- * Re-triggers the scan on each new block so incremental updates arrive.
- * Lightweight — scanLogs no-ops if already scanning or highWater === head.
+ * Re-triggers the log scan on each new block from the SHARED useLatestBlock poller.
+ * This avoids a second watchBlockNumber/eth_blockNumber poller — one poller per app.
+ * scanLogs no-ops if already scanning or highWater === head.
  */
 export function useBlockWatcher() {
   const client = usePublicClient({ chainId: CHAIN_ID })
-  // eslint-disable-next-line react/set-state-in-effect
+  const block  = useLatestBlock()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!client) return
-    const unsub = client.watchBlockNumber({
-      onBlockNumber: () => {
-        void scanLogs(client)
-      },
-    })
-    return unsub
-  }, [client])
+    if (!client || !block) return
+    void scanLogs(client)
+  // block.blockNumber is the dependency — fires once per new block
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [block?.blockNumber])
 }
 
 // ── useEventLogs (lotId-filtered) ─────────────────────────────────────────────

@@ -1,0 +1,6 @@
+Turn 44. Finish turn 43; only src/chain.ts, src/config.ts and src/rpc.ts changed. Still missing (do all of these):
+A3. Use arcTransport / publicClient from src/rpc.ts in src/useBlock.ts and src/logStore.ts (remove logStore's own URL cycling), and replace every other createPublicClient/http() in src (grep, including src/pages/*). Set LOGS_CHUNK_SIZE to 9_000n in src/chain.ts.
+B1. useBlockWatcher in src/useLogs.ts: drop client.watchBlockNumber; subscribe to the shared useBlock poller and call scanLogs on each new block.
+B2. AuctionRoom.tsx: remove both watchContractEvent watchers (Bid, Extended). Call fetchLot when the log store gains a new Bid or Extended log for this lotId; as a fallback, on a new shared block at most every 4 s while the lot is live, never after it is settled.
+C. AuctionRoom.tsx: show "Payment refunded by the seller." only when a BuyerRefunded log exists for this lotId (show its reason if present). Never infer a refund from escrowState CLOSED alone.
+Typecheck, lint and build. Then list every remaining RPC poller with its interval.

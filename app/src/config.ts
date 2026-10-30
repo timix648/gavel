@@ -3,7 +3,7 @@
  * Built with Arc Studio — https://studio.arc.io
  */
 
-import { http, createConfig } from 'wagmi'
+import { createConfig } from 'wagmi'
 import { connectorsForWallets } from '@rainbow-me/rainbowkit'
 import {
   injectedWallet,
@@ -18,7 +18,8 @@ import {
   rainbowWallet,
   walletConnectWallet,
 } from '@rainbow-me/rainbowkit/wallets'
-import { CHAIN, CHAIN_ID, RPC_URL, WALLETCONNECT_PROJECT_ID } from './chain'
+import { CHAIN, CHAIN_ID, WALLETCONNECT_PROJECT_ID } from './chain'
+import { arcTransport } from './rpc'
 import { registerChain } from './tracing'
 
 registerChain(CHAIN_ID, CHAIN.rpcUrls.default.http[0])
@@ -56,7 +57,7 @@ export const config = createConfig({
   // Batch concurrent reads into one JSON-RPC request and poll gently: the public
   // Arc RPC answers 429 when a page fires many small requests at once.
   transports: {
-    [CHAIN_ID]: http(RPC_URL, { batch: { wait: 20 }, retryCount: 4, retryDelay: 1500 }),
+    [CHAIN_ID]: arcTransport,
   },
   pollingInterval: 4000,
 })
