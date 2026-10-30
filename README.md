@@ -52,6 +52,19 @@ Some participants were funded by the author for testing; this is disclosed in [P
 
 ---
 
+## See it working (real mainnet screens, from the demo video)
+
+| | |
+|---|---|
+| ![Same bid on a 12-second chain and on Arc](docs/img/race.jpg) | ![A live lot on the landing page](docs/img/landing.jpg) |
+| **Same bid, two chains.** On 12-second blocks the late bid misses the close; on Arc it lands in 0.5 s and the clock goes back to 0:10. | **A real lot, live on mainnet.** The hero shows whichever lot ends soonest, read straight from the contract. |
+| ![Outbid with only the extra](docs/img/outbid.jpg) | ![Settle through the Memo contract](docs/img/settle.jpg) |
+| **Outbid with only the extra.** The outbid $10 is already back as credit, so the next bid adds only $30. | **One signature to settle.** The lot and the payment move in one transaction, recorded through Arc's Memo contract. |
+| ![The settle transaction on explorer.arc.io](docs/img/explorer.jpg) | ![The live proof page](docs/img/proof.jpg) |
+| **On explorer.arc.io.** The settle transaction, status Success, the lot token moving out of the vault. | **No wallet needed to verify.** Every number on /proof is computed from on-chain events. |
+| ![Any Arc asset](docs/img/create.jpg) | |
+| **Any Arc asset.** Off-chain goods in escrow, NFTs, ERC-1155 positions and ten vetted ERC-20s. | |
+
 ## Contents
 
 1. [The problem](#the-problem)
