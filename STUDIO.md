@@ -664,3 +664,6 @@ Prompt: [prompts/turn35.txt](prompts/turn35.txt). I drew the mark as a vector (b
 
 ## Turn 36 (30 Oct): smooth landing race animation
 Prompt: [prompts/turn36.txt](prompts/turn36.txt). The "12-second chain vs Arc" race dropped frames, froze on hover, and its dots sat off-centre. Studio rebuilt it on one rAF clock with transform-driven dots and tiles revealed by opacity, React re-rendering only on discrete changes, no hover pause, pausing only when off screen or the tab is hidden, and every timer cleared. I verified it locally: 241 frames over 4 s, median 16.7 ms, worst 17.2 ms, and the story keyframes unchanged. No other file and no stats code changed. No hand edits.
+
+## Turn 37 (30 Oct): no layout shift in the race panel
+Prompt: [prompts/turn37.txt](prompts/turn37.txt). The owner's screen recording showed the panel jumping when captions appeared ("Closed. The bid is still waiting for a block." pushed the Arc lane down). Studio gave every caption row and the "Back to 0:10" badge a fixed, always-rendered slot, fading text by opacity only. Verified locally over a full loop: both lane labels stayed at one y position on every frame, worst frame 17.7 ms. No hand edits.

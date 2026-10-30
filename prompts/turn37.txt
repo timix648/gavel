@@ -1,0 +1,10 @@
+Turn 37. Only the BlockComparison animation in src/pages/Landing.tsx. Do not touch stats, the log store, LiveStatsStrip, Proof, or anything that reads the chain.
+
+A screen recording of the live site shows layout shift: the dots now move smoothly, but the panel jumps. When "Closed. The bid is still waiting for a block." appears under the 12-second lane, it pushes the Arc lane down. The beat caption at the top ("Ten seconds left." / "A bid is sent at 0:04.") and the Arc caption ("Accepted in 0.5 s..." / "Sold to the late bidder.") also mount and unmount, so the lanes move up and down during the story and again when it loops.
+
+Fix: nothing in the panel may change size or position during the animation.
+- Give every caption row (top beat caption, 12-second lane caption, Arc lane caption) a fixed height that is always rendered, even when empty (for example a min-h of one line, with the text faded by opacity rather than mounted or unmounted). Use the height of the longest caption so wrapping cannot change it; on narrow screens allow two lines of reserved height.
+- The "Back to 0:10" badge must not shift the clock or the label: reserve its space or position it absolutely.
+- Fade captions with opacity only (no height, margin or y animation).
+- Keep everything from turn 36 (single clock, transform-driven dots, timings, reduced motion).
+Typecheck, lint and build. Report the diff.

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { setNavDirection } from '../App'
 import { usePublicClient } from 'wagmi'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   Lightning, ArrowRight, ArrowSquareOut,
   ArrowCircleRight,
@@ -479,22 +479,21 @@ function BlockComparison() {
 
       <div aria-hidden="true" className="space-y-6">
 
-        {/* Shared beat caption */}
-        <div className="h-5 flex items-center">
-          <AnimatePresence mode="wait">
-            {beat > 0 && (
-              <motion.p
-                key={beat}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.25 }}
-                className="text-xs text-ink-2"
-              >
-                {BEAT_CAPTIONS[beat]}
-              </motion.p>
-            )}
-          </AnimatePresence>
+        {/* Shared beat caption — fixed height, all variants always in DOM, opacity only */}
+        {/* min-h-[1.25rem] = one line of text-xs; no layout change during the loop */}
+        <div className="min-h-[1.25rem] flex items-center relative">
+          {BEAT_CAPTIONS.map((text, i) => (
+            <p
+              key={i}
+              className={[
+                'text-xs text-ink-2 absolute inset-0 transition-opacity duration-200',
+                beat === i && i > 0 ? 'opacity-100' : 'opacity-0',
+              ].join(' ')}
+              aria-hidden={beat !== i}
+            >
+              {text}
+            </p>
+          ))}
         </div>
 
         {/* ── Lane 1: 12-second blocks ──────────────────────────────────────── */}
@@ -548,58 +547,37 @@ function BlockComparison() {
             </span>
           </div>
 
-          {/* Per-lane captions under the 12-s track */}
-          <div className="h-8 flex flex-col justify-center gap-0.5">
-            <AnimatePresence mode="wait" initial={false}>
-              {slowClosed && !slowMissed && (
-                <motion.p
-                  key="slow-closed"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.18 }}
-                  className="text-xs text-ink-3"
-                >
-                  Closed. The bid is still waiting for a block.
-                </motion.p>
-              )}
-              {slowMissed && (
-                <motion.p
-                  key="slow-missed"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.18 }}
-                  className="text-xs text-ink-3"
-                >
-                  Missed. It landed 4 s late.
-                </motion.p>
-              )}
-            </AnimatePresence>
+          {/* Per-lane captions under the 12-s track — fixed height, opacity only */}
+          {/* min-h-[2.5rem]: 2 lines of text-xs reserved so wrapping never shifts Arc lane */}
+          <div className="relative min-h-[2.5rem] flex items-start pt-0.5">
+            <p className={[
+              'text-xs text-ink-3 transition-opacity duration-180 absolute',
+              slowClosed && !slowMissed ? 'opacity-100' : 'opacity-0',
+            ].join(' ')}>
+              Closed. The bid is still waiting for a block.
+            </p>
+            <p className={[
+              'text-xs text-ink-3 transition-opacity duration-180 absolute',
+              slowMissed ? 'opacity-100' : 'opacity-0',
+            ].join(' ')}>
+              Missed. It landed 4 s late.
+            </p>
           </div>
         </div>
 
         {/* ── Lane 2: Arc, sub-second blocks ───────────────────────────────── */}
         <div className="space-y-2">
+          {/* Lane header — "Back to 0:10" badge uses opacity so it never shifts the clock */}
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono text-accent-text tracking-wide whitespace-nowrap">Arc, sub-second blocks</span>
-            {/* "Back to 0:10" sits beside the clock it explains, never on the track,
-                so it cannot cover the bid dot or the close line. Hidden on phones,
-                where the caption below already says it and the header has no room. */}
             <span className="flex items-center gap-2">
-              <AnimatePresence>
-                {arcAccepted && arcSec > 0 && arcSec <= 10 && (
-                  <motion.span
-                    key="ext"
-                    initial={{ opacity: 0, x: 6 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, transition: { duration: 0.3 } }}
-                    className="hidden sm:inline text-[10px] font-semibold font-mono text-warn bg-warn/15 px-1.5 py-0.5 rounded-[3px] whitespace-nowrap"
-                  >
-                    Back to 0:10
-                  </motion.span>
-                )}
-              </AnimatePresence>
+              {/* Badge always in the DOM; invisible when not active so clock position is stable */}
+              <span className={[
+                'hidden sm:inline text-[10px] font-semibold font-mono text-warn bg-warn/15 px-1.5 py-0.5 rounded-[3px] whitespace-nowrap transition-opacity duration-200',
+                arcAccepted && arcSec > 0 && arcSec <= 10 ? 'opacity-100' : 'opacity-0',
+              ].join(' ')}>
+                Back to 0:10
+              </span>
               <MiniClock secsLeft={arcSec} flash={arcFlash} />
             </span>
           </div>
@@ -633,34 +611,20 @@ function BlockComparison() {
             />
           </div>
 
-          {/* Per-lane captions under Arc track */}
-          <div className="h-8 flex flex-col justify-center gap-0.5">
-            <AnimatePresence mode="wait" initial={false}>
-              {arcAccepted && !arcSold && (
-                <motion.p
-                  key="arc-accepted"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.18 }}
-                  className="text-xs text-good"
-                >
-                  Accepted in 0.5 s. Clock back to 0:10.
-                </motion.p>
-              )}
-              {arcSold && (
-                <motion.p
-                  key="arc-sold"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.18 }}
-                  className="text-xs text-good"
-                >
-                  Sold to the late bidder.
-                </motion.p>
-              )}
-            </AnimatePresence>
+          {/* Per-lane captions under Arc track — fixed height, opacity only */}
+          <div className="relative min-h-[2.5rem] flex items-start pt-0.5">
+            <p className={[
+              'text-xs text-good transition-opacity duration-180 absolute',
+              arcAccepted && !arcSold ? 'opacity-100' : 'opacity-0',
+            ].join(' ')}>
+              Accepted in 0.5 s. Clock back to 0:10.
+            </p>
+            <p className={[
+              'text-xs text-good transition-opacity duration-180 absolute',
+              arcSold ? 'opacity-100' : 'opacity-0',
+            ].join(' ')}>
+              Sold to the late bidder.
+            </p>
           </div>
         </div>
 
