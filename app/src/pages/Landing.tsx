@@ -21,7 +21,6 @@ import { AUCTION_HOUSE_ABI, type LotTuple } from '../abi'
 import { useLatestBlock } from '../useBlock'
 import { useLogStore } from '../useLogs'
 import { BezelPanel, BezelPlaceholder } from '../components/AuctionPanel'
-import LiveStatsStrip from '../components/LiveStatsStrip'
 import { fmtUsdc, shortAddr } from '../utils'
 import { fmtAssetLabel, setTokenMetaCache, getTokenMetaCache } from '../hooks/useTokenMeta'
 import { LotKind } from '../abi'
@@ -163,10 +162,22 @@ function MiniClock({ secsLeft, flash = false }: { secsLeft: number; flash?: bool
 const BID_SENT_P     = 16 / STORY_SECS        // p at T-4
 const BID_ARRIVE_P   = 16.5 / STORY_SECS      // p at T-3.5 (Arc bid lands)
 const SLOW_ARRIVE_P  = 24 / STORY_SECS        // p at T+4   (12-s block)
-const SLOW_TILE_STEPS = [-20, -8, 4] as const
-const ARC_TILE_STEPS: number[] = []
-for (let ts = -20; ts <= 9; ts += 0.5) ARC_TILE_STEPS.push(ts)
-const ARC_TILE_STEPS_LEN = ARC_TILE_STEPS.length
+// 12-second lane: 3 block segments, each [startT, endT) in story-seconds
+// The third segment is clipped at story end (T+9)
+const SLOW_SEGS = [[-20, -8], [-8, 4], [4, 9]] as const
+const SLOW_SEGS_LEN = SLOW_SEGS.length
+
+// Arc lane: 0.5-second segments from T-20 to T+9
+const ARC_SEGS: [number, number][] = []
+for (let ts = -20; ts < 9; ts += 0.5) ARC_SEGS.push([ts, Math.min(ts + 0.5, 9)])
+const ARC_SEGS_LEN = ARC_SEGS.length
+
+// Stripe pattern for a "forming" (pending) block: diagonal hatching
+const STRIPE_BG = 'repeating-linear-gradient(45deg, rgb(var(--ink-3) / 0.25) 0px, rgb(var(--ink-3) / 0.25) 2px, transparent 2px, transparent 6px)'
+const SOLID_BG  = 'rgb(var(--ink-3) / 0.35)'
+// Arc forming/confirmed colours (lighter so the dense stream reads well)
+const ARC_FORMING_BG   = 'rgb(var(--accent) / 0.25)'
+const ARC_CONFIRMED_BG = 'rgb(var(--accent) / 0.55)'
 
 // Discrete state thresholds — React only re-renders when one of these crosses.
 const FLAG_SLOW_ARRIVED   = 2
@@ -238,12 +249,15 @@ function BlockComparison() {
   const arcInBlockRef   = useRef<HTMLSpanElement>(null) // "in block" tag
   const slowMissedRef   = useRef<HTMLSpanElement>(null) // "missed" tag
   const arcCloseRef     = useRef<HTMLDivElement>(null)
-  const arcTileRefs     = useRef<(HTMLDivElement | null)[]>([])
   const slow12CloseRef  = useRef<HTMLDivElement>(null)
   // Two playhead line refs — one per lane, both written to the same left % each frame
   const slowPlayheadRef = useRef<HTMLDivElement>(null)
   const arcPlayheadRef  = useRef<HTMLDivElement>(null)
-  const slowTileRefs    = useRef<(HTMLDivElement | null)[]>([])
+  // Segment fill divs: one inner div per segment, width written imperatively every frame
+  // slowSegFillRefs[i] = the inner fill div of the i-th 12-s segment
+  const slowSegFillRefs = useRef<(HTMLDivElement | null)[]>([])
+  // arcSegFillRefs[i] = the fill div of the i-th Arc segment
+  const arcSegFillRefs  = useRef<(HTMLDivElement | null)[]>([])
 
   // ── Imperative frame writer — called every RAF tick ───────────────────────
   // p in [0,1]; slowFlash = whether 12-s close line is currently flashing orange
@@ -332,19 +346,42 @@ function BlockComparison() {
         ? 'rgb(var(--warn))' : 'rgb(var(--ink-3) / 0.6)'
     }
 
-    // ── Slow block tiles: fade + scaleX in over 150 ms ────────────────────
-    for (let i = 0; i < SLOW_TILE_STEPS.length; i++) {
-      const el = slowTileRefs.current[i]
-      if (!el) continue
-      const revealed = t >= SLOW_TILE_STEPS[i]
-      el.style.opacity   = revealed ? '1' : '0'
-      el.style.transform = revealed ? 'scaleX(1)' : 'scaleX(0)'
+    // ── 12-s segment fills: grow width from segStart to min(t, segEnd) ──────
+    // Segment container has left=toPct(segStart)%, width=toPct(segEnd)-toPct(segStart)%.
+    // Inner fill div has width as a % of the container = progress through that segment.
+    // Forming (playhead inside): hatched stripe. Confirmed (playhead past end): solid.
+    for (let i = 0; i < SLOW_SEGS_LEN; i++) {
+      const fill = slowSegFillRefs.current[i]
+      if (!fill) continue
+      const [segStart, segEnd] = SLOW_SEGS[i]
+      if (t < segStart) {
+        fill.style.width = '0%'
+      } else {
+        const confirmed = t >= segEnd
+        const progress  = confirmed ? 1 : (t - segStart) / (segEnd - segStart)
+        fill.style.width = `${progress * 100}%`
+        // Switch between stripe (forming) and solid (confirmed)
+        if (confirmed) {
+          fill.style.background = SOLID_BG
+        } else {
+          fill.style.background = STRIPE_BG
+        }
+      }
     }
 
-    // ── Arc tile opacity: fade in over 150 ms as t advances ───────────────
-    for (let i = 0; i < ARC_TILE_STEPS_LEN; i++) {
-      const el = arcTileRefs.current[i]
-      if (el) el.style.opacity = t >= ARC_TILE_STEPS[i] ? '1' : '0'
+    // ── Arc segment fills: same approach, 0.5-s segments ─────────────────
+    for (let i = 0; i < ARC_SEGS_LEN; i++) {
+      const fill = arcSegFillRefs.current[i]
+      if (!fill) continue
+      const [segStart, segEnd] = ARC_SEGS[i]
+      if (t < segStart) {
+        fill.style.width = '0%'
+      } else {
+        const confirmed = t >= segEnd
+        const progress  = confirmed ? 1 : (t - segStart) / (segEnd - segStart)
+        fill.style.width = `${progress * 100}%`
+        fill.style.background = confirmed ? ARC_CONFIRMED_BG : ARC_FORMING_BG
+      }
     }
   }, [])
 
@@ -566,43 +603,49 @@ function BlockComparison() {
 
           {/* Track */}
           <div className="relative h-9 bg-surface-2 rounded-[6px] overflow-hidden">
-            {/* Playhead — 2 px wide, colour uses rgb(…/alpha) syntax (CSS channels are space-separated) */}
+            {/* Playhead — 2 px wide, sweeps left→right every frame */}
             <div
               ref={slowPlayheadRef}
               className="absolute top-0 bottom-0 pointer-events-none z-20"
               style={{ left: '0%', opacity: 0, width: '2px', backgroundColor: 'rgb(var(--ink-2) / 0.7)' }}
             >
-              {/* "now" label — rides with the playhead, clipped to track */}
               <span
-                className="absolute -top-0 left-1 text-[10px] font-mono text-ink-3 leading-none select-none whitespace-nowrap"
+                className="absolute left-1 text-[10px] font-mono text-ink-3 leading-none select-none whitespace-nowrap"
                 style={{ top: '3px' }}
               >now</span>
             </div>
 
-            {/* Block tiles: 3 tiles, revealed by t threshold; fade + scaleX in 150 ms */}
-            {SLOW_TILE_STEPS.map((storySec, i) => (
-              <div
-                key={storySec}
-                ref={el => { slowTileRefs.current[i] = el }}
-                style={{
-                  left: `clamp(10px, ${toPct(storySec)}%, calc(100% - 10px))`,
-                  opacity: prefersReduced ? 1 : 0,
-                  transform: prefersReduced ? 'scaleX(1)' : 'scaleX(0)',
-                  transition: 'opacity 150ms, transform 150ms',
-                  transformOrigin: 'center',
-                }}
-                className="absolute top-1 bottom-1 w-[18px] -ml-[9px] rounded-[3px] bg-line border border-line/60"
-              />
-            ))}
+            {/* 12-s block segments — container positions fixed; inner fill grows imperatively */}
+            {SLOW_SEGS.map(([segStart, segEnd], i) => {
+              const leftPct  = toPct(segStart)
+              const widthPct = toPct(segEnd) - toPct(segStart)
+              return (
+                <div
+                  key={segStart}
+                  className="absolute top-1.5 bottom-1.5 rounded-[3px] overflow-hidden"
+                  style={{ left: `${leftPct}%`, width: `${widthPct}%`,
+                    // 1 px right-gap between confirmed blocks (margin so fill covers it)
+                    paddingRight: '1px' }}
+                >
+                  {/* fill div: width% written every frame, background = stripe or solid */}
+                  <div
+                    ref={el => { slowSegFillRefs.current[i] = el }}
+                    className="absolute top-0 left-0 bottom-0 rounded-[2px]"
+                    style={{ width: prefersReduced ? '100%' : '0%',
+                      background: prefersReduced ? SOLID_BG : 'transparent' }}
+                  />
+                </div>
+              )
+            })}
 
-            {/* Close line */}
+            {/* Close line — z-10 so it sits above fills but below dots */}
             <div
               ref={slow12CloseRef}
               className="absolute top-0 bottom-0 w-px z-10"
               style={{ left: `${closePct12}%`, backgroundColor: 'rgb(var(--ink-3) / 0.6)' }}
             />
 
-            {/* Bid dot — rides playhead, then drops into block */}
+            {/* Bid dot */}
             <div
               ref={slowDotRef}
               className="absolute w-3 h-3 rounded-full border-2 z-30"
@@ -611,7 +654,7 @@ function BlockComparison() {
                 transition: 'background-color 200ms, border-color 200ms' }}
             />
 
-            {/* Pulsing ring: shown while dot is pending past the close line */}
+            {/* Pulsing ring */}
             <div
               ref={slowPulseRef}
               className="absolute w-5 h-5 rounded-full border-2 border-accent/50 animate-ping z-20"
@@ -659,26 +702,32 @@ function BlockComparison() {
 
           {/* Track */}
           <div className="relative h-9 bg-surface-2 rounded-[6px] overflow-hidden">
-            {/* Playhead — same left value as slow lane; 2 px, rgb(…/alpha) colour */}
+            {/* Playhead — same left value as slow lane */}
             <div
               ref={arcPlayheadRef}
               className="absolute top-0 bottom-0 pointer-events-none z-20"
               style={{ left: '0%', opacity: 0, width: '2px', backgroundColor: 'rgb(var(--ink-2) / 0.7)' }}
             />
 
-            {/* Dense Arc tiles: rendered once, opacity written imperatively */}
-            {ARC_TILE_STEPS.map((ts, i) => (
-              <div
-                key={ts}
-                ref={el => { arcTileRefs.current[i] = el }}
-                style={{
-                  left: `clamp(3px, ${toPct(ts)}%, calc(100% - 3px))`,
-                  opacity: prefersReduced ? 1 : 0,
-                  transition: 'opacity 150ms',
-                }}
-                className="absolute top-1.5 bottom-1.5 w-[3px] -ml-[1.5px] rounded-[1px] bg-ink-3/40"
-              />
-            ))}
+            {/* Arc 0.5-s segments — container positions fixed; fill grows imperatively */}
+            {ARC_SEGS.map(([segStart, segEnd], i) => {
+              const leftPct  = toPct(segStart)
+              const widthPct = toPct(segEnd) - toPct(segStart)
+              return (
+                <div
+                  key={segStart}
+                  className="absolute top-1.5 bottom-1.5 overflow-hidden"
+                  style={{ left: `${leftPct}%`, width: `calc(${widthPct}% - 1px)` }}
+                >
+                  <div
+                    ref={el => { arcSegFillRefs.current[i] = el }}
+                    className="absolute top-0 left-0 bottom-0 rounded-[1px]"
+                    style={{ width: prefersReduced ? '100%' : '0%',
+                      background: prefersReduced ? ARC_CONFIRMED_BG : 'transparent' }}
+                  />
+                </div>
+              )
+            })}
 
             {/* Close line */}
             <div
@@ -1001,9 +1050,6 @@ export default function Landing() {
 
   return (
     <div className="text-ink overflow-x-hidden">
-
-      {/* ── Live mainnet stats strip (hidden until logs loaded) ─────────── */}
-      <LiveStatsStrip />
 
       {/* ═══════════════════════════════════════════════════════════════════ */}
       {/* §1  HERO                                                           */}

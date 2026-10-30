@@ -1,0 +1,13 @@
+Turn 41. Frontend only. Do not touch stats calculations, the log store, Proof, or anything that reads the chain.
+
+A. Live mainnet strip (src/components/LiveStatsStrip.tsx):
+- Remove <LiveStatsStrip /> from src/pages/Landing.tsx; the landing page already shows the same numbers in its stats section. Keep it on the Lots page (Lobby.tsx).
+- In the strip, delete the text "contract holds 0 after every sale" (it is hard-coded, not read from chain, and is false while auctions are live). Keep volume, bids (gasless) and lots settled, and the "Verify on-chain" link.
+
+B. BlockComparison in src/pages/Landing.tsx: the 12-second lane does not follow the playhead. Only three tiles pop in, so the upper bar looks static while the Arc lane fills. Redraw both lanes as timelines that fill in step with the single clock (keep all turn 36-40 mechanics: one rAF clock, imperative writes, no per-frame React renders, no layout shift, start at 0:20 on first view, reduced motion = final frame):
+1. Represent each block as a segment spanning its time interval, not a fixed-width tile. 12-second lane: segments [-20,-8], [-8,4], [4,9 clipped]. Arc lane: 0.5 s segments.
+2. The segment containing the playhead is the "forming" block: draw it from its start to the playhead with a light hatched or striped fill (pending), width updated every frame. When the playhead passes the segment's end, it becomes a solid confirmed block with a 1 px gap to the next one. Arc segments are so short they read as a smooth solid stream; the 12-second lane visibly shows a long hatched block growing for 12 seconds.
+3. Both lanes therefore fill left to right exactly with the playhead at the same x.
+4. The bid dot keeps riding the playhead until its block confirms (Arc at T-3.5, 12-second at T+4), then stays at its x inside that confirmed block with the existing "in block" / "missed" tags and pop.
+5. Close lines stay above the fill and stay visible.
+Typecheck, lint and build. Report the diff.

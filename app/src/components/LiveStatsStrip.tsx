@@ -32,10 +32,9 @@ export default function LiveStatsStrip() {
       <div className="max-w-[1360px] mx-auto flex items-center justify-between gap-4 flex-wrap">
         <p className="text-xs text-ink-3 tabular-nums leading-snug">
           <span className="font-semibold text-ink">Live on Arc mainnet:</span>
-          {' '}{fmtUsdc(totalVolume)} in bids
+          {' '}{fmtUsdc(totalVolume)} USDC bid
           {' '}·{' '}{bids.toLocaleString()} bids ({gasless.toLocaleString()} gasless)
           {' '}·{' '}{settled.toLocaleString()} lots settled
-          {' '}·{' '}contract holds 0 after every sale
         </p>
         <Link
           to="/proof"
